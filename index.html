@@ -287,8 +287,8 @@
             <div>
                  <h3 class="text-sm font-semibold text-secondary mb-2">Visible Links</h3>
                  <div class="flex items-center gap-2">
-                     <button id="toggle-manual-links" title="Toggle Manual Links" class="ui-button px-3 py-2 text-sm rounded-md w-full active">Manual</button>
-                     <button id="toggle-markdown-links" title="Toggle Text Links" class="ui-button px-3 py-2 text-sm rounded-md w-full active">Text</button>
+                      <button id="toggle-manual-links" title="Toggle Manual Links" class="ui-button px-3 py-2 text-sm rounded-md w-full active">Manual</button>
+                      <button id="toggle-markdown-links" title="Toggle Text Links" class="ui-button px-3 py-2 text-sm rounded-md w-full active">Text</button>
                  </div>
             </div>
         </div>
@@ -601,27 +601,22 @@
             updateEdgeEditPanelButtons();
         }
 
+        // ===================================
+        // NODE & LINK RENDERING (MODIFIED)
+        // ===================================
         function renderNodeContent(group, d) {
             group.selectAll("*").remove();
-            
+
             const imageUrls = extractImageUrls(d);
             const hasImage = imageUrls.length > 0;
             const hasTextContent = d.content && d.content.trim() !== '';
             const hasAttachments = d.attachments && d.attachments.length > 0;
             const hasContent = hasTextContent || hasAttachments;
-            
-            const nodeWidth = 180;
-            let nodeHeight = 80; // Default for circle node with only a title
 
-            const isRect = hasImage || hasContent;
-            
-            if (isRect) {
-                let calculatedHeight = 0;
-                if (hasImage) calculatedHeight += 80; 
-                if (hasContent) calculatedHeight += 65;
-                nodeHeight = Math.max(80, calculatedHeight); 
-            }
-            
+            // Use the single source of truth for node dimensions
+            const { width: nodeWidth, height: nodeHeight, isRect } = getNodeDimensions(d);
+
+            // Append the main shape (rect or circle)
             if (isRect) {
                 group.append("rect").attr("width", nodeWidth).attr("height", nodeHeight)
                     .attr("x", -nodeWidth / 2).attr("y", -nodeHeight / 2).attr("rx", 8)
@@ -629,15 +624,16 @@
             } else {
                 group.append("circle").attr("r", 40).attr("class", "node-shape");
             }
-            
+
             let currentY = -nodeHeight / 2;
 
+            // Render image if present
             if (hasImage) {
-                 const clipId = `clip-${d.id}`;
-                 group.append('clipPath').attr('id', clipId)
-                     .append('rect')
-                     .attr("width", nodeWidth).attr("height", 80).attr("x", -nodeWidth / 2).attr("y", currentY)
-                     .attr("rx", 8).attr("ry", 8);
+                const clipId = `clip-${d.id}`;
+                group.append('clipPath').attr('id', clipId)
+                    .append('rect')
+                    .attr("width", nodeWidth).attr("height", 80).attr("x", -nodeWidth / 2).attr("y", currentY)
+                    .attr("rx", 8).attr("ry", 8);
 
                 const imageFO = group.append('foreignObject')
                     .attr('x', -nodeWidth / 2).attr('y', currentY)
@@ -647,56 +643,61 @@
                 currentY += 80;
             }
 
+            // Render title and text content
             if (hasContent || !isRect) {
                 const title = d.name.length > 22 ? d.name.substring(0, 20) + '...' : d.name;
                 const titleElem = group.append("text").attr("class", "node-title select-none").text(title);
-                
+
                 if (isRect) {
+                    // Position title for rectangle nodes
                     titleElem.attr("text-anchor", "start").attr("x", -nodeWidth / 2 + 12).attr("y", currentY + 20);
-                    currentY += 35;
-                     if (hasTextContent) {
-                         const textPreviewHeight = hasAttachments ? 20 : 40;
-                         const fo = group.append('foreignObject')
-                             .attr('x', -nodeWidth / 2 + 12).attr('y', currentY - 10)
-                             .attr('width', nodeWidth - 24).attr('height', textPreviewHeight);
-                         fo.html(`<div class="node-markdown-render">${mdConverter.makeHtml(d.content)}</div>`);
+                    const titleAreaHeight = 35; // The vertical space taken by the title and its padding
+                    currentY += titleAreaHeight;
+
+                    if (hasTextContent) {
+                        // Calculate height for markdown preview dynamically
+                        const contentAreaHeight = nodeHeight - (hasImage ? 80 : 0);
+                        const attachmentsAreaHeight = hasAttachments ? 28 : 0; // Space for attachments bar at the bottom
+                        const textPreviewHeight = contentAreaHeight - titleAreaHeight - attachmentsAreaHeight;
+
+                        const fo = group.append('foreignObject')
+                            .attr('x', -nodeWidth / 2 + 12).attr('y', currentY - 10) // Position it right under the title
+                            .attr('width', nodeWidth - 24).attr('height', Math.max(20, textPreviewHeight))
+                        fo.html(`<div class="node-markdown-render">${mdConverter.makeHtml(d.content)}</div>`);
                     }
                 } else {
+                    // Position title for circle nodes
                     titleElem.attr("text-anchor", "middle").attr("x", 0).attr("y", 5);
                 }
             }
-            
+
+            // Render attachments count if present
             if (hasAttachments) {
                 const attachmentsFO = group.append('foreignObject')
                     .attr('x', -nodeWidth / 2 + 10)
-                    .attr('y', nodeHeight/2 - 26)
+                    .attr('y', nodeHeight / 2 - 26) // Positioned at the bottom of the node
                     .attr('width', 50)
                     .attr('height', 22);
-                
+
                 const attachmentHTML = `<div class="node-attachments-container flex items-center gap-1.5 text-xs p-1 rounded-md">${ICONS.attachment} ${d.attachments.length}</div>`;
                 attachmentsFO.html(attachmentHTML);
             }
-            
-            // Action buttons
+
+            // --- Action buttons ---
             const btnPos = { x: isRect ? nodeWidth/2 + 8 : 35, y: isRect ? 0 : 0 };
-            
             group.append('foreignObject').attr('x', btnPos.x - 11).attr('y', btnPos.y - 38).attr('width', 22).attr('height', 22)
                 .append('xhtml:div').attr('class', 'node-action-button add').html('＋').on('click', (e, d) => { e.stopPropagation(); addLinkedNode(d); });
-            
             group.append('foreignObject').attr('x', btnPos.x - 11).attr('y', btnPos.y + 16).attr('width', 22).attr('height', 22)
                 .append('xhtml:div').attr('class', 'node-action-button delete').html('×')
                 .on('click', (e, d) => { e.stopPropagation(); showConfirm(() => deleteNode(d.id), `Delete "${d.name}"?`); });
-            
             const editIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>`;
             group.append('foreignObject').attr('x', -btnPos.x - 11).attr('y', btnPos.y - 38).attr('width', 22).attr('height', 22)
                 .append('xhtml:div').attr('class', 'node-action-button edit').html(editIcon).on('click', (e, d) => { e.stopPropagation(); openNodeModal(d); });
-
             if (d.content) {
                 const downloadIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
                 group.append('foreignObject').attr('x', -btnPos.x - 11).attr('y', btnPos.y + 16).attr('width', 22).attr('height', 22)
                     .append('xhtml:div').attr('class', 'node-action-button download').html(downloadIcon).on('click', (e, d) => { e.stopPropagation(); downloadMarkdown(d.content, d.name); });
             }
-
             if(hasContent) {
                 const eyeIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
                 group.append('foreignObject').attr('x', -16).attr('y', isRect ? -nodeHeight/2 + 16 : 0).attr('width', 32).attr('height', 32)
@@ -753,7 +754,7 @@
         }
 
         // ===================================
-        // HELPER FUNCTIONS
+        // HELPER FUNCTIONS (MODIFIED)
         // ===================================
         function isImageUrl(url) { try { if(!url) return false; const urlObj = new URL(url, window.location.href); return /\.(jpg|jpeg|png|gif|svg|webp)$/i.test(urlObj.pathname); } catch(e){ return false; } }
         
@@ -768,17 +769,15 @@
             if (!isRect) return { width: 80, height: 80, isRect: false };
 
             const nodeWidth = 180;
-            let nodeHeight;
+            let nodeHeight = 0;
             if (hasImage) {
-                nodeHeight = 80; // Image
-                if (hasContent) nodeHeight += 65;
-            } else { // No image, but has content
-                nodeHeight = 35; // Title
-                if(hasTextContent) nodeHeight += 40;
-                if(hasAttachments) nodeHeight += 25;
+                nodeHeight += 80;
             }
-            nodeHeight = Math.max(80, nodeHeight); 
-            
+            if (hasContent) {
+                nodeHeight += 100; // Increased height for content area
+            }
+            nodeHeight = Math.max(80, nodeHeight); // Minimum height for a rect node
+
             return { width: nodeWidth, height: nodeHeight, isRect: true };
         }
 
@@ -869,7 +868,23 @@
         // ===================================
         // PROJECT MANAGEMENT (FILE-BASED)
         // ===================================
-        function resetGraphState() { nodes = []; links = []; nodeIdCounter = 0; currentRootId = null; currentProjectName = 'Untitled Notework'; isProjectFromFile = false; projectNameSpan.textContent = currentProjectName; searchInput.value = ''; update(); saveToLocal(); window.onload(); } // Rerun onload to get default network
+        function resetGraphState() {
+            nodes = [];
+            links = [];
+            nodeIdCounter = 0;
+            currentRootId = null;
+            currentProjectName = 'Untitled Notework';
+            isProjectFromFile = false;
+            projectNameSpan.textContent = currentProjectName;
+            searchInput.value = '';
+            
+            createDefaultNetwork(); // Create the default nodes and links
+
+            // Update and render the new state
+            updateAllMarkdownLinks();
+            update();
+            applyCurrentLayout();
+        }
         document.getElementById('new-project').addEventListener('click', () => { showConfirm(resetGraphState, "Create a new notework? Any unsaved changes will be lost."); });
         document.getElementById('save-project').addEventListener('click', () => {
             const currentName = currentProjectName.replace(/\.synapse$|\.json$/i, '');
@@ -985,27 +1000,11 @@
             const savedTheme = localStorage.getItem('synapse-theme') || 'warm';
             applyTheme(savedTheme);
             loadFromLocal();
-            // FIX: When the page is first loaded, the default network should be the default node + three child nodes with no markdown in them.
+            
             if (nodes.length === 0) {
-                nodeIdCounter = 1;
-                const rootNode = { id: 1, x: width / 2, y: height / 2, name: 'Welcome to Synapse!', content: 'This is your new notework. Explore the child nodes or click the background to create your own!', attachments: [] };
-                nodes.push(rootNode);
-                currentRootId = 1;
-
-                const childNodes = [
-                    { id: 2, name: 'My First Idea', x_offset: -200, y_offset: 100 },
-                    { id: 3, name: 'Another Concept', x_offset: 0, y_offset: -150 },
-                    { id: 4, name: 'A Related Thought', x_offset: 200, y_offset: 100 }
-                ];
-
-                childNodes.forEach(child => {
-                    nodeIdCounter++;
-                    const newNode = { id: child.id, x: rootNode.x + child.x_offset, y: rootNode.y + child.y_offset, name: child.name, content: '', attachments: [] };
-                    nodes.push(newNode);
-                    links.push({ source: rootNode, target: newNode, direction: 'to', type: 'manual' });
-                });
-                nodeIdCounter = 4; // Set counter to the last used ID
+                createDefaultNetwork();
             }
+
             updateAllMarkdownLinks();
             layoutButtons[currentLayout].classList.add('active');
             update();
@@ -1029,6 +1028,27 @@
         // =========================================================
         // FULL FUNCTION DEFINITIONS (to keep main script clean)
         // =========================================================
+
+        function createDefaultNetwork() {
+            nodeIdCounter = 1;
+            const rootNode = { id: 1, x: width / 2, y: height / 2, name: 'Welcome to Synapse!', content: 'This is your new notework. Explore the child nodes or click the background to create your own!', attachments: [] };
+            nodes.push(rootNode);
+            currentRootId = 1;
+
+            const childNodes = [
+                { id: 2, name: 'My First Idea', x_offset: -200, y_offset: 100 },
+                { id: 3, name: 'Another Concept', x_offset: 0, y_offset: -150 },
+                { id: 4, name: 'A Related Thought', x_offset: 200, y_offset: 100 }
+            ];
+
+            childNodes.forEach(child => {
+                nodeIdCounter++;
+                const newNode = { id: child.id, x: rootNode.x + child.x_offset, y: rootNode.y + child.y_offset, name: child.name, content: '', attachments: [] };
+                nodes.push(newNode);
+                links.push({ source: rootNode, target: newNode, direction: 'to', type: 'manual' });
+            });
+            nodeIdCounter = 4; // Set counter to the last used ID
+        }
 
         function extractImageUrls(nodeData) {
             const urls = new Set();
