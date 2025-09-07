@@ -1,0 +1,2089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synapse | Networked Notebook</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
+    <!-- KaTeX for LaTeX Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        // Theme detection and setting
+        function initTheme() {
+            const saved = localStorage.getItem('synapse-theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = saved || (prefersDark ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+            return theme;
+        }
+        initTheme();
+    </script>
+    
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --bg-tertiary: #f1f3f4;
+            --text-primary: #2d3748;
+            --text-secondary: #4a5568;
+            --text-muted: #718096;
+            --border-color: #e2e8f0;
+            --accent-color: #4a90e2;
+            --accent-hover: #357abd;
+            --surface-elevated: #ffffff;
+            --shadow-light: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+            --shadow-medium: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23);
+            --shadow-heavy: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --bg-tertiary: #3a3a3a;
+            --text-primary: #f7fafc;
+            --text-secondary: #e2e8f0;
+            --text-muted: #a0aec0;
+            --border-color: #4a5568;
+            --accent-color: #63b3ed;
+            --accent-hover: #4299e1;
+            --surface-elevated: #2d2d2d;
+            --shadow-light: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.4);
+            --shadow-medium: 0 3px 6px rgba(0,0,0,0.4), 0 3px 6px rgba(0,0,0,0.5);
+            --shadow-heavy: 0 10px 20px rgba(0,0,0,0.5), 0 6px 6px rgba(0,0,0,0.6);
+        }
+
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Canvas Background Pattern */
+        .canvas-pattern {
+            background-color: var(--bg-primary);
+            background-image: 
+                radial-gradient(circle at 1px 1px, var(--border-color) 1px, transparent 0);
+            background-size: 20px 20px;
+            transition: background-color 0.3s ease;
+        }
+
+        /* Edge Creation State Indicators */
+        .edge-creation-mode {
+            position: relative;
+        }
+        .edge-creation-mode::after {
+            content: '';
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            right: -3px;
+            bottom: -3px;
+            border: 2px dashed var(--accent-color);
+            border-radius: 50%;
+            animation: pulse-border 2s infinite;
+        }
+
+        .edge-deletion-mode {
+            position: relative;
+        }
+        .edge-deletion-mode::after {
+            content: '';
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            right: -3px;
+            bottom: -3px;
+            border: 2px dashed #ef4444;
+            border-radius: 50%;
+            animation: pulse-border 2s infinite;
+        }
+
+        @keyframes pulse-border {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.05); }
+        }
+
+        /* Visual indicator for pending edge operations */
+        .pending-edge-indicator {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent-color);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 1000;
+            box-shadow: var(--shadow-medium);
+            animation: slideDown 0.3s ease-out;
+        }
+
+        .pending-edge-indicator.delete-mode {
+            background: #ef4444;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateX(-50%) translateY(-100%); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+
+        /* Modern Button Styles */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            border: 1px solid var(--border-color);
+            background: var(--surface-elevated);
+            color: var(--text-primary);
+            cursor: pointer;
+            box-shadow: var(--shadow-light);
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-medium);
+            border-color: var(--accent-color);
+        }
+
+        .btn.primary {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        .btn.primary:hover {
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+        }
+
+        .btn.active {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        /* Search Styles */
+        .search-container {
+            position: relative;
+        }
+
+        .search-input {
+            background: var(--surface-elevated);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 12px 8px 36px;
+            color: var(--text-primary);
+            transition: all 0.2s ease;
+            width: 250px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            width: 16px;
+            height: 16px;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--surface-elevated);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: var(--shadow-heavy);
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            margin-top: 4px;
+        }
+
+        .search-result-item {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .search-result-item:hover {
+            background: var(--bg-secondary);
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        /* Project Selector */
+        .project-selector {
+            background: var(--surface-elevated);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: var(--text-primary);
+            min-width: 150px;
+        }
+
+        /* Modal Styles */
+        .modal {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background: var(--surface-elevated);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: var(--shadow-heavy);
+        }
+
+        /* Node Styles */
+        .node-shape { 
+            stroke-width: 1.5px; 
+            transition: all 0.2s ease;
+            fill: var(--surface-elevated);
+            stroke: var(--border-color);
+        }
+        .node:hover .node-shape { 
+            stroke: var(--accent-color);
+            transform: scale(1.02);
+        }
+        .node-shape-selected { 
+            stroke: var(--accent-color) !important; 
+            stroke-width: 2px;
+        }
+        .node-shape-root { 
+            stroke: #22c55e !important; 
+            stroke-width: 2.5px; 
+        }
+
+        /* Link Styles */
+        .link { 
+            stroke: var(--text-muted); 
+            stroke-width: 1.5px; 
+            opacity: 0.7; 
+            cursor: pointer; 
+            transition: all 0.2s; 
+        }
+        .link:hover, .link.selected { 
+            stroke: var(--accent-color); 
+            stroke-width: 2.5px; 
+            opacity: 1; 
+        }
+
+        /* Action Button Styles */
+        .node-action-button { 
+            cursor: pointer; 
+            transition: all 0.2s ease; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            width: 24px; 
+            height: 24px;
+            color: white; 
+            user-select: none; 
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.8);
+        }
+        .node:hover .node-action-button,
+        .node.selected .node-action-button {
+            opacity: 1;
+            pointer-events: auto;
+            transform: scale(1);
+        }
+
+        .node-action-button.add { background-color: var(--accent-color); }
+        .node-action-button.add:hover { background-color: var(--accent-hover); transform: scale(1.1); }
+        .node-action-button.edit { background-color: #64748b; }
+        .node-action-button.edit:hover { background-color: #94a3b8; transform: scale(1.1); }
+        .node-action-button.delete { background-color: #ef4444; }
+        .node-action-button.delete:hover { background-color: #f87171; transform: scale(1.1); }
+        .node-action-button.download { background-color: #16a34a; }
+        .node-action-button.download:hover { background-color: #22c55e; transform: scale(1.1); }
+
+        /* Text and Content Styles */
+        .node-markdown-render { 
+            color: var(--text-secondary); 
+            font-size: 10px; 
+            line-height: 1.25; 
+            overflow: hidden; 
+            word-wrap: break-word; 
+            text-align: left; 
+            max-height: 100%; 
+        }
+
+        /* Tab Styles */
+        .modal-tab { 
+            padding: 8px 16px; 
+            cursor: pointer; 
+            border-bottom: 2px solid transparent; 
+            color: var(--text-muted); 
+            transition: all 0.2s ease; 
+            font-weight: 500;
+        }
+        .modal-tab:hover { color: var(--text-secondary); }
+        .modal-tab.active { color: var(--accent-color); border-bottom-color: var(--accent-color); }
+
+        /* Input and Textarea Styles */
+        .form-input {
+            background: var(--surface-elevated);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: var(--text-primary);
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* Theme toggle button */
+        .theme-toggle {
+            background: var(--surface-elevated);
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .theme-toggle:hover {
+            background: var(--bg-secondary);
+            transform: scale(1.05);
+        }
+
+        /* Project management styles */
+        .project-item {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .project-item:hover {
+            background: var(--bg-secondary);
+        }
+
+        .project-item.active {
+            background: var(--accent-color);
+            color: white;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col">
+
+    <!-- Header and Controls -->
+    <header class="p-4 border-b" style="background: var(--surface-elevated); border-color: var(--border-color);">
+        <div class="container mx-auto flex justify-between items-center flex-wrap gap-4">
+            <div class="flex items-center gap-4">
+                <h1 class="text-2xl font-bold tracking-tight" style="color: var(--text-primary);">Synapse</h1>
+                
+                <!-- Project Selector -->
+                <select id="project-selector" class="project-selector">
+                    <option value="default">Default Project</option>
+                </select>
+                <button id="manage-projects" class="btn">Manage Projects</button>
+            </div>
+
+            <!-- Search -->
+            <div class="search-container">
+                <div class="relative">
+                    <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    <input type="text" id="search-input" class="search-input" placeholder="Search nodes...">
+                </div>
+                <div id="search-results" class="search-results hidden"></div>
+            </div>
+
+            <!-- Layout Controls -->
+            <div class="flex items-center gap-2 flex-wrap">
+                <button id="layout-force" class="btn">Force</button>
+                <button id="layout-radial" class="btn">Radial</button>
+                <button id="layout-hierarchical" class="btn">Hierarchical</button>
+                <button id="layout-circular" class="btn">Circular</button>
+                <button id="layout-grid" class="btn">Grid</button>
+            </div>
+
+            <!-- Action Controls -->
+            <div class="flex items-center gap-3">
+                <button id="export-graph" class="btn primary">Export</button>
+                <label for="import-input" class="btn primary cursor-pointer">Import</label>
+                <input type="file" id="import-input" class="hidden" accept=".json,application/json">
+                <button id="clear-graph" class="btn" style="background: #ef4444; color: white; border-color: #ef4444;">Clear</button>
+                
+                <!-- Theme Toggle -->
+                <button id="theme-toggle" class="theme-toggle">
+                    <svg id="theme-icon-light" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                    <svg id="theme-icon-dark" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                    </svg>
+                </button>
+                
+                <button id="instructions-toggle" class="btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Pending Edge Operation Indicator -->
+    <div id="pending-edge-indicator" class="pending-edge-indicator hidden">
+        <span id="edge-indicator-text">Click another node to create connection</span>
+        <button id="cancel-edge-operation" class="ml-2 text-white/80 hover:text-white">✕</button>
+    </div>
+
+    <!-- Instructions Panel -->
+    <div id="instructions-panel" class="hidden absolute top-20 right-4 z-30 max-w-sm modal-content p-5">
+        <h2 class="font-bold text-lg mb-4" style="color: var(--text-primary);">How to Use Synapse</h2>
+        <ul class="space-y-4 text-sm" style="color: var(--text-secondary);">
+            <li class="flex items-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-color);" class="flex-shrink-0">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+                <p><strong style="color: var(--text-primary);">Pan & Zoom:</strong> Drag the canvas or use your scroll wheel.</p>
+            </li>
+            <li class="flex items-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-color);" class="flex-shrink-0">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="16"></line>
+                    <line x1="8" y1="12" x2="16" y2="12"></line>
+                </svg>
+                <p><strong style="color: var(--text-primary);">Add Node:</strong> Click any empty area on the canvas.</p>
+            </li>
+            <li class="flex items-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-color);" class="flex-shrink-0">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"></path>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"></path>
+                </svg>
+                <p><strong style="color: var(--text-primary);">Connect Nodes:</strong> Click one node, then another to link them. Visual indicators will guide you.</p>
+            </li>
+            <li class="flex items-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-color);" class="flex-shrink-0">
+                    <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <p><strong style="color: var(--text-primary);">Search:</strong> Use the search bar to quickly find and navigate to nodes.</p>
+            </li>
+            <li class="flex items-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-color);" class="flex-shrink-0">
+                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                </svg>
+                <p><strong style="color: var(--text-primary);">Edit Node:</strong> Double-click a node or use its hover buttons.</p>
+            </li>
+            <li class="flex items-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-color);" class="flex-shrink-0">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+                <p><strong style="color: var(--text-primary);">Set Root:</strong> Right-click a node to set as layout root.</p>
+            </li>
+        </ul>
+    </div>
+    
+    <!-- Main SVG Canvas -->
+    <main class="flex-1 relative canvas-pattern">
+        <svg id="network-canvas" class="w-full h-full cursor-grab"></svg>
+        <div id="root-helper" class="absolute bottom-4 left-1/2 -translate-x-1/2 modal-content px-4 py-2 hidden z-20 transition-opacity">
+            Right-click a node to set it as the layout root.
+        </div>
+    </main>
+
+    <!-- Project Management Modal -->
+    <div id="project-modal" class="hidden fixed inset-0 modal z-40 flex items-center justify-center p-4">
+        <div class="modal-content w-full max-w-md p-6">
+            <h2 class="text-xl font-bold mb-4" style="color: var(--text-primary);">Project Management</h2>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2" style="color: var(--text-secondary);">Create New Project</label>
+                <div class="flex gap-2">
+                    <input type="text" id="new-project-name" class="form-input flex-1" placeholder="Project name">
+                    <button id="create-project" class="btn primary">Create</button>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-sm font-medium mb-2" style="color: var(--text-secondary);">Existing Projects</label>
+                <div id="project-list" class="border rounded-lg overflow-hidden" style="border-color: var(--border-color);">
+                    <!-- Project list will be populated here -->
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button id="project-modal-close" class="btn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Node Edit Modal -->
+    <div id="node-modal" class="hidden fixed inset-0 modal z-40 flex items-center justify-center p-4">
+        <div class="modal-content w-full max-w-5xl h-[85vh] p-8 flex flex-col">
+            <h2 id="modal-title" class="text-2xl font-bold mb-6 flex-shrink-0" style="color: var(--text-primary);">Edit Node</h2>
+            
+            <div class="flex gap-8 flex-1 min-h-0">
+                <!-- Left side: Editor & Tabs -->
+                <div class="w-1/2 flex flex-col space-y-4">
+                    <div>
+                        <label for="node-name" class="block text-sm font-medium mb-2" style="color: var(--text-secondary);">Title</label>
+                        <input type="text" id="node-name" class="form-input w-full">
+                    </div>
+
+                    <!-- Tabs -->
+                    <div class="flex-shrink-0 border-b" style="border-color: var(--border-color);">
+                        <nav class="flex space-x-2" id="modal-tabs">
+                            <button data-tab="content" class="modal-tab active">Content</button>
+                            <button data-tab="attachments" class="modal-tab">Attachments</button>
+                            <button data-tab="connections" class="modal-tab">Connections</button>
+                        </nav>
+                    </div>
+
+                    <!-- Tab Panels -->
+                    <div class="flex-1 min-h-0">
+                        <div id="tab-content" class="h-full flex flex-col">
+                            <div class="flex justify-between items-center mb-2">
+                                <label for="node-content" class="block text-sm font-medium" style="color: var(--text-secondary);">Content (Markdown + LaTeX)</label>
+                                <div class="flex items-center gap-2">
+                                    <button id="goto-preview-btn" class="btn">Go to Preview</button>
+                                    <button id="download-markdown-modal" class="btn primary">Download .md</button>
+                                </div>
+                            </div>
+                            <textarea id="node-content" class="form-input w-full h-full resize-none"></textarea>
+                        </div>
+                        <div id="tab-attachments" class="hidden h-full flex flex-col">
+                            <div class="flex-1 space-y-3 overflow-y-auto mb-3 pr-2" id="attachments-list"></div>
+                             <div class="flex-shrink-0">
+                                 <label for="attachment-input" class="block text-sm font-medium mb-2" style="color: var(--text-secondary);">Add Attachment</label>
+                                 <div class="flex gap-2">
+                                     <input type="text" id="attachment-input" placeholder="Paste a URL and press Enter..." class="form-input flex-1">
+                                     <button id="add-attachment-btn" class="btn primary">Add</button>
+                                 </div>
+                             </div>
+                        </div>
+                        <div id="tab-connections" class="hidden h-full flex flex-col">
+                           <div class="flex-1 space-y-2 overflow-y-auto mb-2 pr-2" id="connections-list"></div>
+                           <div class="flex-shrink-0">
+                                 <label for="add-connection-select" class="block text-sm font-medium mb-2" style="color: var(--text-secondary);">Add Connection</label>
+                                 <div class="flex gap-2">
+                                     <select id="add-connection-select" class="form-input flex-1"></select>
+                                     <button id="add-connection-btn" class="btn primary">Connect</button>
+                                 </div>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Right side: Preview -->
+                <div class="w-1/2 flex flex-col min-h-0">
+                    <label class="block text-sm font-medium mb-2 flex-shrink-0" style="color: var(--text-secondary);">Live Preview</label>
+                    <div id="markdown-preview" class="flex-1 border rounded-lg p-4 overflow-y-auto" style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary);"></div>
+                </div>
+            </div>
+
+            <div class="mt-8 flex justify-between items-center flex-shrink-0">
+                <button id="modal-delete-node" class="btn" style="background: #ef4444; color: white; border-color: #ef4444;">Delete Node</button>
+                <div class="flex space-x-3">
+                    <button id="modal-cancel" class="btn">Cancel</button>
+                    <button id="modal-save" class="btn primary">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirm-modal" class="hidden fixed inset-0 modal z-50 flex items-center justify-center p-4">
+        <div class="modal-content w-full max-w-md p-8">
+            <h2 class="text-xl font-bold mb-4" style="color: var(--text-primary);">Are you sure?</h2>
+            <p class="mb-8" style="color: var(--text-secondary);" id="confirm-message">This action cannot be undone.</p>
+            <div class="flex justify-end space-x-3">
+                <button id="confirm-cancel" class="btn">Cancel</button>
+                <button id="confirm-ok" class="btn" style="background: #ef4444; color: white; border-color: #ef4444;">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Markdown Reader Modal -->
+    <div id="markdown-reader-modal" class="hidden fixed inset-0 modal z-50 flex items-center justify-center p-4">
+        <div class="modal-content w-full max-w-4xl h-[85vh] p-8 flex flex-col">
+            <h2 id="reader-title" class="text-3xl font-bold mb-6 flex-shrink-0" style="color: var(--text-primary);">Node Content</h2>
+            <div id="reader-preview-content" class="flex-1 border rounded-lg p-6 overflow-y-auto" style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary);">
+                <!-- Rendered markdown will go here -->
+            </div>
+            <div class="mt-8 flex justify-between items-center flex-shrink-0">
+                <button id="reader-download-btn" class="btn primary">Download .md</button>
+                <div class="flex space-x-3">
+                    <button id="reader-edit-btn" class="btn">Edit Node</button>
+                    <button id="reader-close-btn" class="btn primary">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edge Edit Panel -->
+    <div id="edge-edit-panel" class="hidden absolute modal-content p-2 z-30">
+        <div class="flex items-center gap-1">
+            <button id="edge-dir-from" title="Direction: To Source" class="btn">←</button>
+            <button id="edge-dir-to" title="Direction: To Target" class="btn">→</button>
+            <button id="edge-dir-both" title="Direction: Bidirectional" class="btn">↔</button>
+            <div class="w-px h-5 mx-1" style="background: var(--border-color);"></div>
+            <button id="edge-delete" title="Delete Edge" class="btn" style="background: #ef4444; color: white; border-color: #ef4444;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const svg = d3.select("#network-canvas");
+        const width = svg.node().getBoundingClientRect().width;
+        const height = svg.node().getBoundingClientRect().height;
+        const container = svg.append("g");
+        
+        // Arrow markers with theme awareness
+        const defs = container.append('defs');
+        function updateMarkers() {
+            const theme = document.documentElement.getAttribute('data-theme');
+            const arrowColor = theme === 'dark' ? '#a0aec0' : '#718096';
+            
+            defs.selectAll('marker').remove();
+            
+            defs.append('marker')
+                .attr('id', 'arrowhead').attr('viewBox', '-10 -5 10 10').attr('refX', -1).attr('refY', 0)
+                .attr('orient', 'auto').attr('markerWidth', 8).attr('markerHeight', 8).attr('xoverflow', 'visible')
+                .append('svg:path').attr('d', 'M -10,-5 L 0,0 L -10,5').attr('fill', arrowColor);
+            defs.append('marker')
+                .attr('id', 'arrowhead-start').attr('viewBox', '-10 -5 10 10').attr('refX', 1).attr('refY', 0)
+                .attr('orient', 'auto').attr('markerWidth', 8).attr('markerHeight', 8).attr('xoverflow', 'visible')
+                .append('svg:path').attr('d', 'M 0,-5 L 10,0 L 0,5').attr('fill', arrowColor);
+        }
+        updateMarkers();
+
+        const filter = defs.append("filter")
+            .attr("id", "node-shadow")
+            .attr("x", "-50%")
+            .attr("y", "-50%")
+            .attr("width", "200%")
+            .attr("height", "200%");
+        filter.append("feDropShadow")
+            .attr("dx", 0)
+            .attr("dy", 4)
+            .attr("stdDeviation", 6)
+            .attr("flood-color", "#000000")
+            .attr("flood-opacity", 0.3);
+
+        // KaTeX Extension
+        const katexExtension = () => [{
+            type: 'output',
+            filter: function (html) {
+                if (typeof katex === 'undefined') {
+                    console.warn('KaTeX not loaded, skipping LaTeX rendering.');
+                    return html;
+                }
+                
+                const parts = html.split(/(<code[\s\S]*?>[\s\S]*?<\/code>|<pre[\s\S]*?>[\s\S]*?<\/pre>)/);
+                
+                const processedParts = parts.map((part, index) => {
+                    if (index % 2 === 1) { return part; }
+                    
+                    part = part.replace(/<p>\$\$([\s\S]+?)\$\$<\/p>/g, (match, content) => {
+                        try {
+                            return katex.renderToString(content.trim(), { displayMode: true, throwOnError: false, trust: true });
+                        } catch (e) { return `<span style="color: #ef4444;">LaTeX Error: ${e.message}</span>`; }
+                    });
+
+                    part = part.replace(/(?<!\\)\$([^\$\n]+?)\$/g, (match, content) => {
+                        try {
+                            return katex.renderToString(content.trim(), { displayMode: false, throwOnError: false, trust: true });
+                        } catch (e) { return `<span style="color: #ef4444;">LaTeX Error: ${e.message}</span>`; }
+                    });
+
+                    return part;
+                });
+
+                return processedParts.join('');
+            }
+        }];
+        showdown.extension('katex', katexExtension);
+
+        const mdConverter = new showdown.Converter({ extensions: ['katex'] });
+
+        // Icons
+        const ICONS = {
+            link: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"></path></svg>`,
+            image: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`,
+            youtube: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 11.75a29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>`,
+            pdf: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`
+        };
+        
+        // Application State
+        let nodes = [];
+        let links = [];
+        let nodeIdCounter = 0;
+        let selectedNodeForEdge = null;
+        let selectedLink = null;
+        let currentLayout = 'force';
+        let currentRootId = null;
+        let activeNodeEditing = null;
+        let activeNodeReading = null;
+        let currentProject = 'default';
+        let searchIndex = [];
+
+        // Theme Management
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const newTheme = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('synapse-theme', newTheme);
+            updateThemeIcon(newTheme);
+            updateMarkers();
+        }
+
+        function updateThemeIcon(theme) {
+            const lightIcon = document.getElementById('theme-icon-light');
+            const darkIcon = document.getElementById('theme-icon-dark');
+            if (theme === 'dark') {
+                lightIcon.classList.add('hidden');
+                darkIcon.classList.remove('hidden');
+            } else {
+                lightIcon.classList.remove('hidden');
+                darkIcon.classList.add('hidden');
+            }
+        }
+
+        // Initialize theme icon
+        updateThemeIcon(document.documentElement.getAttribute('data-theme'));
+
+        // Project Management
+        function getProjects() {
+            try {
+                return JSON.parse(localStorage.getItem('synapse-projects') || '{"default": {"name": "Default Project", "data": null}}');
+            } catch (e) {
+                return {"default": {"name": "Default Project", "data": null}};
+            }
+        }
+
+        function saveProjects(projects) {
+            localStorage.setItem('synapse-projects', JSON.stringify(projects));
+        }
+
+        function saveCurrentProject() {
+            const projects = getProjects();
+            if (!projects[currentProject]) {
+                projects[currentProject] = { name: currentProject };
+            }
+            projects[currentProject].data = {
+                nodes: nodes.map(n => ({...n, fx: null, fy: null})),
+                links: links.map(l => ({ source: l.source.id, target: l.target.id, direction: l.direction })),
+                nodeIdCounter,
+                currentRootId
+            };
+            saveProjects(projects);
+        }
+
+        function loadProject(projectId) {
+            saveCurrentProject(); // Save current before switching
+            currentProject = projectId;
+            
+            const projects = getProjects();
+            const projectData = projects[projectId]?.data;
+            
+            if (projectData) {
+                nodes = projectData.nodes.map(n => ({...n, attachments: n.attachments || []})) || [];
+                nodeIdCounter = projectData.nodeIdCounter || 0;
+                currentRootId = projectData.currentRootId || (nodes.length > 0 ? nodes[0].id : null);
+                const nodeMap = new Map(nodes.map(n => [n.id, n]));
+                links = (projectData.links || []).map(l => ({ 
+                    source: nodeMap.get(l.source), 
+                    target: nodeMap.get(l.target), 
+                    direction: l.direction || 'to' 
+                })).filter(l => l.source && l.target);
+            } else {
+                // New project - start fresh
+                nodes = [];
+                links = [];
+                nodeIdCounter = 0;
+                currentRootId = null;
+            }
+            
+            updateSearchIndex();
+            update();
+            applyCurrentLayout();
+            populateProjectSelector();
+        }
+
+        function populateProjectSelector() {
+            const selector = document.getElementById('project-selector');
+            const projects = getProjects();
+            selector.innerHTML = '';
+            
+            Object.entries(projects).forEach(([id, project]) => {
+                const option = document.createElement('option');
+                option.value = id;
+                option.textContent = project.name;
+                option.selected = id === currentProject;
+                selector.appendChild(option);
+            });
+        }
+
+        function populateProjectList() {
+            const projectList = document.getElementById('project-list');
+            const projects = getProjects();
+            projectList.innerHTML = '';
+            
+            Object.entries(projects).forEach(([id, project]) => {
+                const item = document.createElement('div');
+                item.className = `project-item ${id === currentProject ? 'active' : ''}`;
+                item.innerHTML = `
+                    <span>${project.name}</span>
+                    ${id !== 'default' ? `<button class="btn" style="background: #ef4444; color: white; border-color: #ef4444;" onclick="deleteProject('${id}')">Delete</button>` : ''}
+                `;
+                item.addEventListener('click', (e) => {
+                    if (e.target.tagName !== 'BUTTON') {
+                        loadProject(id);
+                        document.getElementById('project-modal').classList.add('hidden');
+                    }
+                });
+                projectList.appendChild(item);
+            });
+        }
+
+        function createProject() {
+            const nameInput = document.getElementById('new-project-name');
+            const name = nameInput.value.trim();
+            if (!name) return;
+            
+            const projects = getProjects();
+            const id = name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+            
+            if (projects[id]) {
+                alert('Project already exists!');
+                return;
+            }
+            
+            projects[id] = { name, data: null };
+            saveProjects(projects);
+            nameInput.value = '';
+            populateProjectList();
+            populateProjectSelector();
+        }
+
+        function deleteProject(projectId) {
+            if (projectId === 'default') return;
+            
+            showConfirm(() => {
+                const projects = getProjects();
+                delete projects[projectId];
+                saveProjects(projects);
+                
+                if (currentProject === projectId) {
+                    loadProject('default');
+                }
+                
+                populateProjectList();
+                populateProjectSelector();
+            }, `Delete project "${projectId}"? This cannot be undone.`);
+        }
+
+        // Search Functionality
+        function updateSearchIndex() {
+            searchIndex = nodes.map(node => ({
+                id: node.id,
+                name: node.name,
+                content: node.content || '',
+                searchText: `${node.name} ${node.content || ''}`.toLowerCase()
+            }));
+        }
+
+        function performSearch(query) {
+            if (!query.trim()) return [];
+            const lowerQuery = query.toLowerCase();
+            return searchIndex.filter(item => 
+                item.searchText.includes(lowerQuery)
+            ).slice(0, 10);
+        }
+
+        function displaySearchResults(results) {
+            const searchResults = document.getElementById('search-results');
+            
+            if (results.length === 0) {
+                searchResults.classList.add('hidden');
+                return;
+            }
+            
+            searchResults.innerHTML = results.map(result => `
+                <div class="search-result-item" data-node-id="${result.id}">
+                    <div style="color: var(--text-primary); font-weight: 500; margin-bottom: 4px;">${result.name}</div>
+                    <div style="color: var(--text-muted); font-size: 12px;">${result.content.slice(0, 100)}${result.content.length > 100 ? '...' : ''}</div>
+                </div>
+            `).join('');
+            
+            searchResults.classList.remove('hidden');
+            
+            // Add click handlers
+            searchResults.querySelectorAll('.search-result-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const nodeId = parseInt(item.dataset.nodeId);
+                    focusOnNode(nodeId);
+                    searchResults.classList.add('hidden');
+                    document.getElementById('search-input').value = '';
+                });
+            });
+        }
+
+        function focusOnNode(nodeId) {
+            const node = nodes.find(n => n.id === nodeId);
+            if (!node) return;
+            
+            const scale = 1.5;
+            const translate = [width / 2 - scale * node.x, height / 2 - scale * node.y];
+            const transform = d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale);
+            svg.transition().duration(750).call(zoom.transform, transform);
+            
+            // Highlight the node temporarily
+            const nodeElement = d3.selectAll('.node').filter(d => d.id === nodeId);
+            nodeElement.select('.node-shape').transition()
+                .duration(200)
+                .style('stroke', '#fbbf24')
+                .style('stroke-width', '3px')
+                .transition()
+                .delay(1000)
+                .duration(500)
+                .style('stroke', null)
+                .style('stroke-width', null);
+        }
+
+        // Edge operation visual indicators
+        function showEdgeIndicator(mode = 'create') {
+            const indicator = document.getElementById('pending-edge-indicator');
+            const text = document.getElementById('edge-indicator-text');
+            
+            if (mode === 'create') {
+                text.textContent = 'Click another node to create connection';
+                indicator.classList.remove('delete-mode');
+            } else {
+                text.textContent = 'Click another node to delete connection';
+                indicator.classList.add('delete-mode');
+            }
+            
+            indicator.classList.remove('hidden');
+        }
+
+        function hideEdgeIndicator() {
+            document.getElementById('pending-edge-indicator').classList.add('hidden');
+        }
+
+        // Helper Functions
+        function isNodeEmpty(nodeData) {
+            const hasContent = nodeData.content && nodeData.content.trim() !== '';
+            const hasAttachments = nodeData.attachments && nodeData.attachments.length > 0;
+            return !hasContent && !hasAttachments;
+        }
+
+        function isImageUrl(url) {
+            try {
+                if(!url) return false;
+                const urlObj = new URL(url, window.location.href);
+                return /\.(jpg|jpeg|png|gif|svg|webp)$/i.test(urlObj.pathname);
+            } catch(e){
+                return false;
+            }
+        }
+
+        function isPdfUrl(url) { return /\.pdf$/i.test(url); }
+
+        function getAttachmentIcon(url) {
+            try {
+                const hostname = new URL(url).hostname;
+                if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) return ICONS.youtube;
+                if (isImageUrl(url)) return ICONS.image;
+                if (isPdfUrl(url)) return ICONS.pdf;
+            } catch (e) { /* invalid URL */ }
+            return ICONS.link;
+        }
+
+        function downloadMarkdown(content, filename) {
+            if (!content) return;
+            const sanitizedFilename = filename ? filename.replace(/[^a-z0-9]/gi, '_').toLowerCase() : 'content';
+            const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${sanitizedFilename}.md`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function fitView(duration = 750) {
+            if (nodes.length === 0) {
+                svg.transition().duration(duration).call(zoom.transform, d3.zoomIdentity);
+                return;
+            }
+            setTimeout(() => {
+                const bounds = container.node().getBBox();
+                const parent = svg.node();
+                const fullWidth = parent.clientWidth;
+                const fullHeight = parent.clientHeight;
+                const { x, y, width, height } = bounds;
+
+                if (width === 0 || height === 0) return;
+
+                const midX = x + width / 2;
+                const midY = y + height / 2;
+                const scale = 0.9 / Math.max(width / fullWidth, height / fullHeight);
+                const translate = [fullWidth / 2 - scale * midX, fullHeight / 2 - scale * midY];
+
+                const transform = d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale);
+                svg.transition().duration(duration).call(zoom.transform, transform);
+            }, 50); 
+        }
+
+        // Event Listeners
+        document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+        document.getElementById('manage-projects').addEventListener('click', () => {
+            populateProjectList();
+            document.getElementById('project-modal').classList.remove('hidden');
+        });
+        document.getElementById('project-modal-close').addEventListener('click', () => {
+            document.getElementById('project-modal').classList.add('hidden');
+        });
+        document.getElementById('create-project').addEventListener('click', createProject);
+        document.getElementById('new-project-name').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') createProject();
+        });
+        document.getElementById('project-selector').addEventListener('change', (e) => {
+            loadProject(e.target.value);
+        });
+        document.getElementById('cancel-edge-operation').addEventListener('click', () => {
+            selectedNodeForEdge = null;
+            d3.selectAll('.node').classed('selected', false);
+            d3.selectAll('.node').classed('edge-creation-mode', false);
+            d3.selectAll('.node').classed('edge-deletion-mode', false);
+            hideEdgeIndicator();
+        });
+
+        // Search functionality
+        const searchInput = document.getElementById('search-input');
+        const searchResults = document.getElementById('search-results');
+        
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value;
+            if (query.trim()) {
+                const results = performSearch(query);
+                displaySearchResults(results);
+            } else {
+                searchResults.classList.add('hidden');
+            }
+        });
+
+        searchInput.addEventListener('blur', () => {
+            // Delay hiding to allow clicks on results
+            setTimeout(() => searchResults.classList.add('hidden'), 200);
+        });
+
+        // D3 Setup
+        const nodeModal = document.getElementById('node-modal');
+        const nodeNameInput = document.getElementById('node-name');
+        const nodeContentTextarea = document.getElementById('node-content');
+        const markdownPreview = document.getElementById('markdown-preview');
+        const attachmentInput = document.getElementById('attachment-input');
+        const attachmentsList = document.getElementById('attachments-list');
+        const connectionsList = document.getElementById('connections-list');
+        const addConnectionSelect = document.getElementById('add-connection-select');
+        const edgeEditPanel = document.getElementById('edge-edit-panel');
+        const markdownReaderModal = document.getElementById('markdown-reader-modal');
+        const readerTitle = document.getElementById('reader-title');
+        const readerPreviewContent = document.getElementById('reader-preview-content');
+
+        const simulation = d3.forceSimulation(nodes)
+            .force("link", d3.forceLink(links).id(d => d.id).distance(280))
+            .force("charge", d3.forceManyBody().strength(-1200))
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .on("tick", ticked);
+
+        let link = container.append("g").attr("class", "links").selectAll(".link");
+        let node = container.append("g").attr("class", "nodes").selectAll(".node");
+
+        const zoom = d3.zoom().on("zoom", (event) => container.attr("transform", event.transform));
+        svg.call(zoom);
+
+        // Core Application Logic
+        function update() {
+            link = link.data(links, d => `${d.source.id}-${d.target.id}`);
+            link.exit().remove();
+            link = link.enter().append("line")
+                .attr("class", "link")
+                .on('click', handleLinkClick)
+                .merge(link);
+
+            link.attr('marker-start', d => (d.direction === 'from' || d.direction === 'both') ? 'url(#arrowhead-start)' : null)
+                .attr('marker-end', d => (d.direction === 'to' || d.direction === 'both') ? 'url(#arrowhead)' : null);
+
+            node = node.data(nodes, d => d.id);
+            node.exit().remove();
+            
+            const nodeEnter = node.enter().append("g")
+                .attr("class", "node cursor-pointer")
+                .attr("filter", "url(#node-shadow)")
+                .call(drag(simulation))
+                .on("click", handleNodeClick)
+                .on("dblclick", handleNodeDblClick)
+                .on("contextmenu", handleNodeRightClick);
+            
+            node = nodeEnter.merge(node);
+            node.each(function(d) { renderNodeContent(d3.select(this), d); });
+            node.selectAll('.node-shape').classed('node-shape-root', d => d.id === currentRootId && ['radial', 'hierarchical'].includes(currentLayout));
+            
+            simulation.nodes(nodes);
+            simulation.force("link").links(links);
+            if(currentLayout === 'force') simulation.alpha(0.3).restart();
+            else simulation.stop();
+            
+            ticked();
+            updateSearchIndex();
+            saveCurrentProject();
+        }
+
+        function renderNodeContent(group, d) {
+            group.selectAll("*").remove();
+            
+            // Determine Node Appearance
+            const attachmentImageUrls = (d.attachments || []).filter(isImageUrl);
+            let markdownImageUrl = null;
+            if (d.content) {
+                const markdownImageRegex = /!\[.*?\]\((.*?)\)/;
+                const match = d.content.match(markdownImageRegex);
+                if (match && match[1]) {
+                    markdownImageUrl = match[1];
+                }
+            }
+            
+            const carouselUrls = attachmentImageUrls;
+            const hasCarousel = carouselUrls.length > 0;
+            const hasSinglePreview = !hasCarousel && markdownImageUrl;
+            const hasImage = hasCarousel || hasSinglePreview;
+            const isMarkdownPreview = d.content && d.content.trim() !== '';
+            const hasAttachments = d.attachments && d.attachments.length > 0;
+
+            const nodeWidth = 160;
+            let nodeHeight = 80;
+            if (hasImage) nodeHeight = 150;
+            else if (isMarkdownPreview || hasAttachments) nodeHeight = 100;
+
+            const isRect = hasImage || isMarkdownPreview || hasAttachments;
+
+            // Render Node Shape
+            if (isRect) {
+                group.append("rect").attr("width", nodeWidth).attr("height", nodeHeight)
+                    .attr("x", -nodeWidth / 2).attr("y", -nodeHeight / 2).attr("rx", 12)
+                    .attr("class", "node-shape");
+            } else {
+                group.append("circle").attr("r", 40)
+                    .attr("class", "node-shape");
+            }
+
+            // Render Image Preview (Carousel or Single)
+            if(hasImage) {
+                const imageFO = group.append('foreignObject')
+                    .attr('x', -nodeWidth/2).attr('y', -nodeHeight/2)
+                    .attr('width', nodeWidth).attr('height', 60)
+                    .style('pointer-events', 'all'); 
+                
+                let imageHTML;
+                if(hasCarousel) {
+                    d.carouselIndex = d.carouselIndex || 0;
+                    if (d.carouselIndex >= carouselUrls.length) d.carouselIndex = 0;
+                    
+                    imageHTML = `
+                        <div class="node-carousel-wrapper">
+                            <img src="${carouselUrls[d.carouselIndex]}" class="node-carousel-img" onerror="this.onerror=null;this.src='https://placehold.co/160x60/1e293b/94a3b8?text=Image'"/>
+                            ${carouselUrls.length > 1 ? `
+                                <button class="node-carousel-btn node-carousel-prev">&lt;</button>
+                                <button class="node-carousel-btn node-carousel-next">&gt;</button>
+                                <div class="node-carousel-dots">
+                                    ${carouselUrls.map((_, i) => `<span class="${i === d.carouselIndex ? 'active' : ''}"></span>`).join('')}
+                                </div>
+                            ` : ''}
+                        </div>`;
+                } else {
+                    imageHTML = `<div class="node-carousel-wrapper"><img src="${markdownImageUrl}" class="node-carousel-img" onerror="this.onerror=null;this.src='https://placehold.co/160x60/1e293b/94a3b8?text=Image'"/></div>`;
+                }
+                imageFO.html(imageHTML);
+
+                if (hasCarousel && carouselUrls.length > 1) {
+                    imageFO.select('.node-carousel-prev').on('click', e => {
+                        e.stopPropagation();
+                        d.carouselIndex = (d.carouselIndex - 1 + carouselUrls.length) % carouselUrls.length;
+                        saveCurrentProject();
+                        imageFO.select('img').attr('src', carouselUrls[d.carouselIndex]);
+                        imageFO.selectAll('.node-carousel-dots span')
+                            .classed('active', (_, i) => i === d.carouselIndex);
+                    });
+                    imageFO.select('.node-carousel-next').on('click', e => {
+                        e.stopPropagation();
+                        d.carouselIndex = (d.carouselIndex + 1) % carouselUrls.length;
+                        saveCurrentProject();
+                        imageFO.select('img').attr('src', carouselUrls[d.carouselIndex]);
+                        imageFO.selectAll('.node-carousel-dots span')
+                            .classed('active', (_, i) => i === d.carouselIndex);
+                    });
+                }
+            }
+
+            // Render Title, Content, Attachments
+            const title = d.name.length > 20 ? d.name.substring(0, 20) + '...' : d.name;
+            const titleElem = group.append("text")
+                .attr("font-size", "14px")
+                .attr("font-weight", "600")
+                .attr("class", "select-none")
+                .style("fill", "var(--text-primary)")
+                .text(title);
+            
+            if (isRect) {
+                const titleY = -nodeHeight / 2 + (hasImage ? 75 : 20);
+                titleElem.attr("text-anchor", "start").attr("x", -nodeWidth / 2 + 12).attr("y", titleY);
+
+                if(isMarkdownPreview) {
+                    const markdownY = titleY + 10;
+                    const markdownHeight = nodeHeight / 2 - (hasAttachments ? 25 : 15) - (hasImage ? 15 : 0);
+                    const fo = group.append('foreignObject')
+                        .attr('x', -nodeWidth / 2 + 12).attr('y', markdownY)
+                        .attr('width', nodeWidth - 24).attr('height', markdownHeight)
+                        .style('pointer-events', 'all')
+                        .style('cursor', 'pointer')
+                        .on('click', (e, d) => {
+                            e.stopPropagation();
+                            openMarkdownReaderModal(d);
+                        });
+                    fo.html(`<div class="node-markdown-render">${mdConverter.makeHtml(d.content)}</div>`);
+                }
+                if(hasAttachments) {
+                    const attachmentHTML = d.attachments.slice(0, 5).map(url => `<a href="${url}" target="_blank" title="${url}" style="color: var(--text-muted); transition: color 0.2s;" onmouseover="this.style.color='var(--text-secondary)'" onmouseout="this.style.color='var(--text-muted)'">${getAttachmentIcon(url)}</a>`).join('');
+                    const attachmentsFO = group.append('foreignObject')
+                        .attr('x', -nodeWidth / 2 + 12).attr('y', nodeHeight / 2 - 25)
+                        .attr('width', nodeWidth - 24).attr('height', 20);
+                    attachmentsFO.html(`<div style="display: flex; align-items: center; gap: 4px; height: 100%;">${attachmentHTML}</div>`);
+                }
+            } else {
+                titleElem.attr("text-anchor", "middle").attr("y", 5);
+            }
+
+            // Render Action Buttons
+            const btnPositions = {
+                'add': { x: isRect ? nodeWidth/2 : 40/Math.SQRT2, y: isRect ? -nodeHeight/2 : -40/Math.SQRT2 },
+                'edit': { x: isRect ? nodeWidth/2 : 40/Math.SQRT2, y: isRect ? nodeHeight/2 : 40/Math.SQRT2 },
+                'delete': { x: isRect ? -nodeWidth/2 : -40/Math.SQRT2, y: isRect ? -nodeHeight/2 : -40/Math.SQRT2 },
+                'download': { x: isRect ? -nodeWidth/2 : -40/Math.SQRT2, y: isRect ? nodeHeight/2 : 40/Math.SQRT2 }
+            };
+
+            group.append('foreignObject').attr('x', btnPositions.add.x - 12).attr('y', btnPositions.add.y - 12).attr('width', 24).attr('height', 24)
+                .append('xhtml:div').attr('class', 'node-action-button add').html('＋').on('click', (e, d) => { e.stopPropagation(); addLinkedNode(d); });
+            
+            group.append('foreignObject').attr('x', btnPositions.edit.x - 12).attr('y', btnPositions.edit.y - 12).attr('width', 24).attr('height', 24)
+                .append('xhtml:div').attr('class', 'node-action-button edit')
+                .html(`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>`)
+                .on('click', (e, d) => { e.stopPropagation(); openNodeModal(d); });
+
+            group.append('foreignObject').attr('x', btnPositions.delete.x - 12).attr('y', btnPositions.delete.y - 12).attr('width', 24).attr('height', 24)
+                .append('xhtml:div').attr('class', 'node-action-button delete').html('×')
+                .on('click', (e, d) => { 
+                    e.stopPropagation();
+                    if (isNodeEmpty(d)) {
+                        deleteNode(d.id);
+                    } else {
+                        showConfirm(() => deleteNode(d.id), "Delete this node?");
+                    }
+                });
+
+            if (isMarkdownPreview && isRect) {
+                const downloadIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
+                group.append('foreignObject').attr('x', btnPositions.download.x - 12).attr('y', btnPositions.download.y - 12).attr('width', 24).attr('height', 24)
+                    .append('xhtml:div')
+                    .attr('class', 'node-action-button download')
+                    .attr('title', 'Download Markdown')
+                    .html(downloadIcon)
+                    .on('click', (e, d) => {
+                        e.stopPropagation();
+                        downloadMarkdown(d.content, d.name);
+                    });
+            }
+        }
+        
+        function openNodeModal(nodeData) {
+            activeNodeEditing = nodeData;
+            nodeNameInput.value = nodeData.name || '';
+            nodeContentTextarea.value = nodeData.content || '';
+            
+            attachmentsList.innerHTML = '';
+            (nodeData.attachments || []).forEach(url => addAttachmentToModalList(url));
+            
+            populateConnectionsList(nodeData.id);
+            populateAddConnectionSelect(nodeData.id);
+            updateLivePreview();
+
+            nodeModal.classList.remove('hidden');
+            document.querySelector('#modal-tabs button[data-tab="content"]').click();
+            nodeContentTextarea.focus();
+        }
+
+        function openMarkdownReaderModal(nodeData) {
+            if (!nodeData) return;
+            activeNodeReading = nodeData;
+            readerTitle.textContent = nodeData.name || 'Node Content';
+            readerPreviewContent.innerHTML = mdConverter.makeHtml(nodeData.content || '');
+            markdownReaderModal.classList.remove('hidden');
+        }
+
+        function closeMarkdownReaderModal() {
+            markdownReaderModal.classList.add('hidden');
+            activeNodeReading = null;
+        }
+
+        function populateConnectionsList(nodeId) {
+            connectionsList.innerHTML = '';
+            const connectedLinks = links.filter(l => l.source.id === nodeId || l.target.id === nodeId);
+            
+            if (connectedLinks.length === 0) {
+                connectionsList.innerHTML = `<span style="color: var(--text-muted);" class="text-sm italic">No connections.</span>`;
+                return;
+            }
+
+            connectedLinks.forEach(link => {
+                const otherNode = link.source.id === nodeId ? link.target : link.source;
+                const isEditingNodeSource = link.source.id === nodeId;
+                const direction = link.direction || 'to';
+
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between p-2 rounded-lg text-sm min-w-0';
+                item.style.background = 'var(--bg-secondary)';
+                
+                const toThisDir = isEditingNodeSource ? 'from' : 'to';
+                const fromThisDir = isEditingNodeSource ? 'to' : 'from';
+
+                item.innerHTML = `
+                    <span class="truncate" style="color: var(--text-primary);" title="${otherNode.name}">${otherNode.name}</span>
+                    <div class="flex items-center gap-1">
+                        <button title="Direction: To this node" data-dir="${toThisDir}" class="btn ${direction === toThisDir ? 'active': ''}">←</button>
+                        <button title="Direction: Bidirectional" data-dir="both" class="btn ${direction === 'both' ? 'active': ''}">↔</button>
+                        <button title="Direction: From this node" data-dir="${fromThisDir}" class="btn ${direction === fromThisDir ? 'active': ''}">→</button>
+                        <button class="remove-btn ml-2" style="color: #ef4444; background: transparent; border: none; font-weight: bold; cursor: pointer;">&times;</button>
+                    </div>`;
+
+                item.querySelectorAll('.btn[data-dir]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        link.direction = btn.dataset.dir;
+                        update();
+                        populateConnectionsList(nodeId);
+                    });
+                });
+
+                item.querySelector('.remove-btn').addEventListener('click', () => {
+                    links = links.filter(l => l !== link);
+                    update();
+                    populateConnectionsList(nodeId);
+                    populateAddConnectionSelect(nodeId);
+                });
+                connectionsList.appendChild(item);
+            });
+        }
+        
+        function populateAddConnectionSelect(nodeId) {
+            const connectedNodeIds = new Set(
+                links
+                    .filter(l => l.source.id === nodeId || l.target.id === nodeId)
+                    .map(l => l.source.id === nodeId ? l.target.id : l.source.id)
+            );
+
+            const availableNodes = nodes.filter(n => n.id !== nodeId && !connectedNodeIds.has(n.id));
+            addConnectionSelect.innerHTML = availableNodes.map(n => `<option value="${n.id}">${n.name}</option>`).join('');
+            addConnectionSelect.disabled = availableNodes.length === 0;
+            document.getElementById('add-connection-btn').disabled = availableNodes.length === 0;
+        }
+
+        function addAttachmentToModalList(url) {
+            const item = document.createElement('div');
+            item.className = 'flex items-center justify-between p-2 rounded-lg text-sm min-w-0';
+            item.style.background = 'var(--bg-secondary)';
+            item.dataset.url = url;
+
+            const previewHTML = isImageUrl(url) 
+                ? `<img src="${url}" class="w-12 h-12 object-cover rounded-md border flex-shrink-0" style="border-color: var(--border-color);" onerror="this.style.display='none'"/>`
+                : '';
+
+            item.innerHTML = `
+                <div class="flex items-center gap-3 min-w-0">
+                    ${previewHTML}
+                    <span class="truncate" style="color: var(--text-primary);" title="${url}">${url}</span>
+                </div>
+                <button class="remove-btn ml-2 flex-shrink-0" style="color: #ef4444; background: transparent; border: none; font-weight: bold; cursor: pointer;">&times;</button>
+            `;
+            item.querySelector('.remove-btn').addEventListener('click', () => {
+                item.remove();
+            });
+            attachmentsList.appendChild(item);
+        }
+
+        function updateLivePreview() {
+            const content = nodeContentTextarea.value;
+            markdownPreview.innerHTML = mdConverter.makeHtml(content);
+        }
+
+        // Modal Event Listeners
+        nodeContentTextarea.addEventListener('input', updateLivePreview);
+        
+        document.getElementById('download-markdown-modal').addEventListener('click', () => {
+            if (activeNodeEditing) {
+                downloadMarkdown(nodeContentTextarea.value, nodeNameInput.value);
+            }
+        });
+
+        document.getElementById('goto-preview-btn').addEventListener('click', () => {
+            if (activeNodeEditing) {
+                const nodeToPreview = activeNodeEditing;
+                nodeModal.classList.add('hidden');
+                activeNodeEditing = null;
+                openMarkdownReaderModal(nodeToPreview);
+            }
+        });
+
+        document.getElementById('add-attachment-btn').addEventListener('click', () => {
+            if (attachmentInput.value) {
+                try {
+                    new URL(attachmentInput.value);
+                    addAttachmentToModalList(attachmentInput.value);
+                    attachmentInput.value = '';
+                } catch(e) {
+                    console.error("Invalid URL");
+                }
+            }
+        });
+        attachmentInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('add-attachment-btn').click(); }});
+        
+        document.getElementById('add-connection-btn').addEventListener('click', () => {
+            const targetNodeId = parseInt(addConnectionSelect.value);
+            if (!targetNodeId || !activeNodeEditing) return;
+            const sourceNode = nodes.find(n => n.id === activeNodeEditing.id);
+            const targetNode = nodes.find(n => n.id === targetNodeId);
+            if (sourceNode && targetNode) {
+                links.push({ source: sourceNode, target: targetNode, direction: 'to' });
+                update();
+                populateConnectionsList(activeNodeEditing.id);
+                populateAddConnectionSelect(activeNodeEditing.id);
+            }
+        });
+
+        const tabsContainer = document.getElementById('modal-tabs');
+        const tabPanels = {
+            content: document.getElementById('tab-content'),
+            attachments: document.getElementById('tab-attachments'),
+            connections: document.getElementById('tab-connections'),
+        };
+        tabsContainer.addEventListener('click', (e) => {
+            if (e.target.matches('.modal-tab')) {
+                const tabName = e.target.dataset.tab;
+                tabsContainer.querySelectorAll('.modal-tab').forEach(tab => tab.classList.remove('active'));
+                e.target.classList.add('active');
+                Object.values(tabPanels).forEach(panel => panel.classList.add('hidden'));
+                tabPanels[tabName].classList.remove('hidden');
+            }
+        });
+
+        document.getElementById('modal-cancel').addEventListener('click', () => {
+            nodeModal.classList.add('hidden');
+            activeNodeEditing = null;
+        });
+        document.getElementById('modal-delete-node').addEventListener('click', () => {
+            if(!activeNodeEditing) return;
+            showConfirm(() => {
+                deleteNode(activeNodeEditing.id);
+                nodeModal.classList.add('hidden');
+                activeNodeEditing = null;
+            }, "Delete this node?");
+        });
+
+        document.getElementById('modal-save').addEventListener('click', () => {
+            if (activeNodeEditing) {
+                const node = nodes.find(n => n.id === activeNodeEditing.id);
+                if(node) {
+                    node.name = nodeNameInput.value;
+                    node.content = nodeContentTextarea.value;
+                    node.attachments = Array.from(attachmentsList.querySelectorAll('[data-url]')).map(item => item.dataset.url);
+                }
+            }
+            nodeModal.classList.add('hidden');
+            activeNodeEditing = null;
+            update();
+        });
+        
+        const confirmModal = document.getElementById('confirm-modal');
+        let confirmCallback = null;
+        function showConfirm(callback, message = "This action cannot be undone.") {
+            document.getElementById('confirm-message').textContent = message;
+            confirmModal.classList.remove('hidden');
+            confirmCallback = callback;
+        }
+        document.getElementById('confirm-ok').addEventListener('click', () => { if (confirmCallback) confirmCallback(); confirmModal.classList.add('hidden'); confirmCallback = null; });
+        document.getElementById('confirm-cancel').addEventListener('click', () => { confirmModal.classList.add('hidden'); confirmCallback = null; });
+        document.getElementById('clear-graph').addEventListener('click', () => {
+            showConfirm(() => { 
+                nodes = []; 
+                links = []; 
+                nodeIdCounter = 0; 
+                currentRootId = null; 
+                update(); 
+            }, "Clear the entire graph?");
+        });
+
+        function hideEdgeEditPanel() {
+            edgeEditPanel.classList.add('hidden');
+            if (selectedLink) {
+                const linkElem = link.filter(d => d === selectedLink);
+                if(!linkElem.empty()) linkElem.classed('selected', false);
+                selectedLink = null;
+            }
+        }
+
+        svg.on('click', (event) => {
+            if (event.target.isEqualNode(svg.node())) {
+                hideEdgeEditPanel();
+                if (selectedNodeForEdge) {
+                    selectedNodeForEdge = null;
+                    d3.selectAll('.node').classed('selected', false);
+                    d3.selectAll('.node').classed('edge-creation-mode', false);
+                    d3.selectAll('.node').classed('edge-deletion-mode', false);
+                    hideEdgeIndicator();
+                } else {
+                    const [x, y] = d3.pointer(event, container.node());
+                    nodeIdCounter++;
+                    const newNode = {id: nodeIdCounter, x, y, name: `Node ${nodeIdCounter}`, content: '', attachments: []};
+                    nodes.push(newNode);
+                    if (currentRootId === null) currentRootId = newNode.id;
+                    update();
+                }
+            }
+        });
+        
+        function handleNodeDblClick(event, d) { event.stopPropagation(); openNodeModal(d); }
+        
+        function deleteNode(nodeId) {
+            nodes = nodes.filter(n => n.id !== nodeId);
+            links = links.filter(l => l.source.id !== nodeId && l.target.id !== nodeId);
+            if(selectedNodeForEdge && selectedNodeForEdge.id === nodeId) {
+                selectedNodeForEdge = null;
+                hideEdgeIndicator();
+            }
+            if(currentRootId === nodeId) currentRootId = nodes.length > 0 ? nodes[0].id : null;
+            applyCurrentLayout(); 
+            update();
+        }
+
+        function addLinkedNode(sourceNode) {
+            nodeIdCounter++;
+            const newNode = {id: nodeIdCounter, x: sourceNode.x + 120, y: sourceNode.y + 120, name: `Node ${nodeIdCounter}`, content: '', attachments: []};
+            nodes.push(newNode);
+            links.push({ source: sourceNode, target: newNode, direction: 'to' });
+            update();
+            if(['radial', 'hierarchical'].includes(currentLayout)) applyCurrentLayout();
+        }
+        
+        function getNodeDimensions(nodeData) {
+            const attachmentImageUrls = (nodeData.attachments || []).filter(isImageUrl);
+            let markdownImageUrl = null;
+            if (nodeData.content) {
+                const markdownImageRegex = /!\[.*?\]\((.*?)\)/;
+                const match = nodeData.content.match(markdownImageRegex);
+                if (match && match[1]) {
+                    markdownImageUrl = match[1];
+                }
+            }
+            const hasImage = attachmentImageUrls.length > 0 || markdownImageUrl;
+            const isMarkdownPreview = nodeData.content && nodeData.content.trim() !== '';
+            const hasAttachments = nodeData.attachments && nodeData.attachments.length > 0;
+            const isRect = hasImage || isMarkdownPreview || hasAttachments;
+            
+            if (!isRect) return { width: 80, height: 80, isRect: false };
+
+            const nodeWidth = 160;
+            let nodeHeight = 80;
+            if(hasImage) nodeHeight = 150;
+            else if (isMarkdownPreview || hasAttachments) nodeHeight = 100;
+
+            return { width: nodeWidth, height: nodeHeight, isRect: true };
+        }
+
+        function ticked() {
+            node.attr("transform", d => `translate(${d.x},${d.y})`);
+            link.each(function(d) {
+                const source = d.source; const target = d.target;
+                
+                const sourceDim = getNodeDimensions(source);
+                const targetDim = getNodeDimensions(target);
+
+                const dx = target.x - source.x; const dy = target.y - source.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist === 0) return;
+
+                let sourcePadding = 0;
+                if (sourceDim.isRect) {
+                    const angle = Math.atan2(-dy, -dx);
+                    const w = sourceDim.width / 2; const h = sourceDim.height / 2;
+                    sourcePadding = (w * h) / Math.sqrt(Math.pow(h * Math.cos(angle), 2) + Math.pow(w * Math.sin(angle), 2));
+                } else { sourcePadding = sourceDim.width / 2; }
+
+                let targetPadding = 0;
+                if (targetDim.isRect) {
+                    const angle = Math.atan2(dy, dx);
+                    const w = targetDim.width / 2; const h = targetDim.height / 2;
+                    targetPadding = (w * h) / Math.sqrt(Math.pow(h * Math.cos(angle), 2) + Math.pow(w * Math.sin(angle), 2));
+                } else { targetPadding = targetDim.width / 2; }
+
+                const sourceRatio = dist > 0 ? (dist - sourcePadding) / dist : 0;
+                const targetRatio = dist > 0 ? (dist - targetPadding) / dist : 0;
+                
+                d3.select(this)
+                    .attr("x1", target.x - dx * sourceRatio).attr("y1", target.y - dy * sourceRatio)
+                    .attr("x2", source.x + dx * targetRatio).attr("y2", source.y + dy * targetRatio);
+            });
+        }
+
+        function drag(simulation) {
+            function dragstarted(event, d) {
+                if (!event.active && currentLayout === 'force') simulation.alphaTarget(0.3).restart();
+                d.fx = d.x; d.fy = d.y;
+            }
+            function dragged(event, d) {
+                d.fx = event.x; d.fy = event.y;
+                if (currentLayout !== 'force') { d.x = event.x; d.y = event.y; ticked(); }
+            }
+            function dragended(event, d) {
+                if (!event.active && currentLayout === 'force') simulation.alphaTarget(0);
+                if (currentLayout === 'force') { d.fx = null; d.fy = null; }
+            }
+            return d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended);
+        }
+
+        document.getElementById('instructions-toggle').addEventListener('click', () => 
+            document.getElementById('instructions-panel').classList.toggle('hidden')
+        );
+        
+        function handleNodeClick(event, d) {
+            event.stopPropagation();
+            hideEdgeEditPanel();
+            if (event.altKey) {
+                deleteNode(d.id);
+                return;
+            }
+            if (!selectedNodeForEdge) {
+                selectedNodeForEdge = d;
+                d3.selectAll('.node').classed('selected', false);
+                d3.selectAll('.node').classed('edge-creation-mode', false);
+                d3.selectAll('.node').classed('edge-deletion-mode', false);
+                d3.select(event.currentTarget).classed('selected', true);
+                d3.select(event.currentTarget).classed('edge-creation-mode', true);
+                showEdgeIndicator('create');
+            } else {
+                if (selectedNodeForEdge.id !== d.id) {
+                    const existingLinkIndex = links.findIndex(l => 
+                        (l.source.id === selectedNodeForEdge.id && l.target.id === d.id) || 
+                        (l.source.id === d.id && l.target.id === selectedNodeForEdge.id)
+                    );
+                    if (existingLinkIndex > -1) {
+                        links.splice(existingLinkIndex, 1);
+                        showEdgeIndicator('delete');
+                        setTimeout(() => hideEdgeIndicator(), 1000);
+                    } else {
+                        links.push({ source: selectedNodeForEdge, target: d, direction: 'to' });
+                        showEdgeIndicator('create');
+                        setTimeout(() => hideEdgeIndicator(), 1000);
+                    }
+                }
+                selectedNodeForEdge = null;
+                d3.selectAll('.node').classed('selected', false);
+                d3.selectAll('.node').classed('edge-creation-mode', false);
+                d3.selectAll('.node').classed('edge-deletion-mode', false);
+                setTimeout(() => hideEdgeIndicator(), 1000);
+                update();
+                if(['radial', 'hierarchical'].includes(currentLayout)) applyCurrentLayout();
+            }
+        }
+
+        function updateEdgeEditPanelButtons() {
+            if (!selectedLink) return;
+            const direction = selectedLink.direction || 'to';
+            document.querySelectorAll('#edge-edit-panel .btn').forEach(btn => btn.classList.remove('active'));
+            if (direction === 'to') document.getElementById('edge-dir-to').classList.add('active');
+            else if (direction === 'from') document.getElementById('edge-dir-from').classList.add('active');
+            else if (direction === 'both') document.getElementById('edge-dir-both').classList.add('active');
+        }
+
+        function handleLinkClick(event, d) {
+            event.stopPropagation();
+            selectedNodeForEdge = null;
+            d3.selectAll('.node').classed('selected', false);
+            d3.selectAll('.node').classed('edge-creation-mode', false);
+            d3.selectAll('.node').classed('edge-deletion-mode', false);
+            hideEdgeIndicator();
+
+            if (selectedLink === d) {
+                hideEdgeEditPanel();
+                return;
+            }
+
+            d3.selectAll('.link').classed('selected', false);
+            d3.select(this).classed('selected', true);
+            selectedLink = d;
+
+            edgeEditPanel.style.left = `${event.pageX + 15}px`;
+            edgeEditPanel.style.top = `${event.pageY - 20}px`;
+            edgeEditPanel.classList.remove('hidden');
+
+            updateEdgeEditPanelButtons();
+        }
+
+        function handleNodeRightClick(event, d) { 
+            event.preventDefault(); 
+            if (['radial', 'hierarchical'].includes(currentLayout)) { 
+                currentRootId = d.id; 
+                applyCurrentLayout(); 
+                update(); 
+            } 
+        }
+
+        function findConnectedComponent(startNodeId) { 
+            if (!startNodeId || nodes.length === 0) return { componentNodes: []}; 
+            const startNode = nodes.find(n => n.id === startNodeId); 
+            if (!startNode) return { componentNodes: []}; 
+            const componentNodes = new Map(); 
+            const queue = [startNode]; 
+            const visited = new Set([startNode.id]); 
+            while(queue.length > 0) { 
+                const currentNode = queue.shift(); 
+                componentNodes.set(currentNode.id, currentNode); 
+                links.forEach(link => { 
+                    const sourceId = link.source.id; const targetId = link.target.id; 
+                    if(sourceId === currentNode.id && !visited.has(targetId)) { 
+                        visited.add(targetId); queue.push(link.target); 
+                    } else if(targetId === currentNode.id && !visited.has(sourceId)) { 
+                        visited.add(sourceId); queue.push(link.source); 
+                    } 
+                }); 
+            } 
+            return { componentNodes: Array.from(componentNodes.values()) }; 
+        }
+        
+        // Layout Controls
+        const layoutButtons = { 
+            force: document.getElementById('layout-force'), 
+            radial: document.getElementById('layout-radial'), 
+            hierarchical: document.getElementById('layout-hierarchical'), 
+            circular: document.getElementById('layout-circular'), 
+            grid: document.getElementById('layout-grid'), 
+        }; 
+        const rootHelper = document.getElementById('root-helper'); 
+        
+        Object.keys(layoutButtons).forEach(layoutId => { 
+            layoutButtons[layoutId].addEventListener('click', () => { 
+                currentLayout = layoutId; 
+                Object.values(layoutButtons).forEach(btn => btn.classList.remove('active')); 
+                layoutButtons[layoutId].classList.add('active'); 
+                rootHelper.classList.toggle('hidden', !['radial', 'hierarchical'].includes(layoutId)); 
+                applyCurrentLayout(); 
+            }); 
+        });
+        
+        function createHierarchy(rootNode, nodesInComponent, allLinks) {
+            if (!rootNode) return null;
+            const adj = new Map(nodesInComponent.map(n => [n.id, []]));
+            const componentIds = new Set(nodesInComponent.map(n => n.id));
+            allLinks.forEach(link => {
+                const sourceId = link.source.id; const targetId = link.target.id;
+                if (componentIds.has(sourceId) && componentIds.has(targetId)) {
+                    adj.get(sourceId).push(targetId); adj.get(targetId).push(sourceId);
+                }
+            });
+            const rootHierarchy = { ...rootNode, children: [] };
+            const queue = [rootHierarchy]; const visited = new Set([rootHierarchy.id]);
+            while (queue.length > 0) {
+                const uNode = queue.shift();
+                for (const v_id of adj.get(uNode.id) || []) {
+                    if (!visited.has(v_id)) {
+                        visited.add(v_id);
+                        const originalVNode = nodesInComponent.find(n => n.id === v_id);
+                        if (originalVNode) {
+                            const vHierarchyNode = { ...originalVNode, children: [] };
+                            uNode.children.push(vHierarchyNode);
+                            queue.push(vHierarchyNode);
+                        }
+                    }
+                }
+            }
+            return rootHierarchy;
+        }
+
+        function applyCurrentLayout() {
+            nodes.forEach(node => { node.fx = null; node.fy = null; });
+            if ((!currentRootId || !nodes.find(n => n.id === currentRootId)) && nodes.length > 0) { 
+                currentRootId = nodes[0].id; 
+            }
+            const { componentNodes } = findConnectedComponent(currentRootId);
+            
+            switch (currentLayout) {
+                case 'force':
+                    simulation.force("center", d3.forceCenter(width / 2, height / 2)).alpha(1).restart();
+                    break;
+                case 'radial': case 'hierarchical':
+                    if (componentNodes.length === 0 || !currentRootId) break;
+                    const rootNodeForHierarchy = componentNodes.find(n => n.id === currentRootId);
+                    const hierarchyData = createHierarchy(rootNodeForHierarchy, componentNodes, links);
+                    if (!hierarchyData) break;
+                    const root = d3.hierarchy(hierarchyData);
+                    if (currentLayout === 'hierarchical') {
+                        const treeLayout = d3.tree().nodeSize([120, 220]);
+                        treeLayout(root);
+                        root.descendants().forEach(d => {
+                            const node = nodes.find(n => n.id === d.data.id);
+                            if(node){ node.x = d.x + width / 2; node.y = d.y + height * 0.1; }
+                        });
+                    } else {
+                        const radius = Math.min(width, height) / 2.5;
+                        const treeLayout = d3.tree().size([2 * Math.PI, radius]);
+                        treeLayout(root);
+                        root.descendants().forEach(d => {
+                            const node = nodes.find(n => n.id === d.data.id);
+                            if(node){
+                                node.x = width / 2 + d.y * Math.cos(d.x - Math.PI / 2);
+                                node.y = height / 2 + d.y * Math.sin(d.x - Math.PI / 2);
+                            }
+                        });
+                    }
+                    ticked();
+                    break;
+                case 'circular':
+                    const r = Math.min(width, height) / 2.5; 
+                    const step = (2 * Math.PI) / nodes.length;
+                    nodes.forEach((n, i) => { 
+                        n.x = width / 2 + r * Math.cos(i * step); 
+                        n.y = height / 2 + r * Math.sin(i * step); 
+                    });
+                    ticked();
+                    break;
+                case 'grid':
+                    const cols = Math.ceil(Math.sqrt(nodes.length)); 
+                    if (cols === 0) break;
+                    const cellW = width / (cols + 1); 
+                    const cellH = height / (Math.ceil(nodes.length / cols) + 1);
+                    nodes.forEach((n, i) => { 
+                        n.x = (i % cols + 1) * cellW; 
+                        n.y = (Math.floor(i / cols) + 1) * cellH; 
+                    });
+                    ticked();
+                    break;
+            }
+        }
+        
+        // Import/Export Functions
+        function exportGraph() {
+            try {
+                const projects = getProjects();
+                const dataStr = JSON.stringify(projects, null, 2);
+                const blob = new Blob([dataStr], {type: "application/json"});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'synapse-projects.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (e) { 
+                console.error("Failed to export projects", e); 
+            }
+        }
+
+        function importGraph(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    
+                    // Handle both old single-graph format and new multi-project format
+                    if (importedData.nodes && importedData.links) {
+                        // Old format - convert to new project format
+                        showConfirm(() => {
+                            const projects = getProjects();
+                            projects['imported'] = {
+                                name: 'Imported Project',
+                                data: {
+                                    nodes: importedData.nodes.map(n => ({...n, attachments: n.attachments || []})) || [],
+                                    links: importedData.links || [],
+                                    nodeIdCounter: importedData.nodeIdCounter || 0,
+                                    currentRootId: importedData.currentRootId || null
+                                }
+                            };
+                            saveProjects(projects);
+                            loadProject('imported');
+                            event.target.value = '';
+                        }, "Import this graph as a new project?");
+                    } else if (typeof importedData === 'object') {
+                        // New format - multiple projects
+                        showConfirm(() => {
+                            saveProjects(importedData);
+                            populateProjectSelector();
+                            populateProjectList();
+                            event.target.value = '';
+                        }, "Import these projects? This will overwrite all existing projects.");
+                    } else { 
+                        throw new Error("Invalid file format."); 
+                    }
+                } catch (error) {
+                    console.error("Failed to import:", error);
+                    event.target.value = '';
+                }
+            };
+            reader.readAsText(file);
+        }
+        
+        document.getElementById('export-graph').addEventListener('click', exportGraph);
+        document.getElementById('import-input').addEventListener('change', importGraph);
+        document.getElementById('edge-dir-to').addEventListener('click', () => { 
+            if (selectedLink) { 
+                selectedLink.direction = 'to'; 
+                update(); 
+                updateEdgeEditPanelButtons(); 
+            }
+        });
+        document.getElementById('edge-dir-from').addEventListener('click', () => { 
+            if (selectedLink) { 
+                selectedLink.direction = 'from'; 
+                update(); 
+                updateEdgeEditPanelButtons(); 
+            }
+        });
+        document.getElementById('edge-dir-both').addEventListener('click', () => { 
+            if (selectedLink) { 
+                selectedLink.direction = 'both'; 
+                update(); 
+                updateEdgeEditPanelButtons(); 
+            }
+        });
+        document.getElementById('edge-delete').addEventListener('click', () => { 
+            if (selectedLink) { 
+                links = links.filter(l => l !== selectedLink); 
+                hideEdgeEditPanel(); 
+                update(); 
+            }
+        });
+        document.getElementById('reader-close-btn').addEventListener('click', closeMarkdownReaderModal);
+        document.getElementById('reader-download-btn').addEventListener('click', () => {
+            if (activeNodeReading) {
+                downloadMarkdown(activeNodeReading.content, activeNodeReading.name);
+            }
+        });
+        document.getElementById('reader-edit-btn').addEventListener('click', () => {
+            if (activeNodeReading) {
+                const nodeToEdit = activeNodeReading;
+                closeMarkdownReaderModal();
+                openNodeModal(nodeToEdit);
+            }
+        });
+
+        // Window Events & Initialization
+        window.onload = () => {
+            populateProjectSelector();
+            loadProject(currentProject);
+            
+            // Initialize with default content if no projects exist
+            if (nodes.length === 0) {
+                nodeIdCounter = 1;
+                nodes.push({
+                    id: 1, 
+                    x: width / 2, 
+                    y: height / 2, 
+                    name: `Welcome to Synapse`, 
+                    content: '# Welcome to Synapse!\n\nThis is your **ReMarkable-inspired** networked notebook. Here are some key features:\n\n## Getting Started\n- **Dark/Light Mode**: Click the theme toggle in the header\n- **Projects**: Create multiple project notebooks using the project selector\n- **Search**: Use the search bar to quickly find nodes\n- **Visual Indicators**: When creating connections, you\'ll see helpful visual cues\n\n## Navigation\n- Double-click this node to edit\n- Drag the background to pan\n- Scroll to zoom\n- Right-click nodes to set layout roots\n\n## LaTeX Support\nYou can write math: $E = mc^2$ or block equations:\n\n$\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}$\n\nStart building your knowledge network!', 
+                    attachments: []
+                });
+                currentRootId = 1;
+            }
+            
+            layoutButtons[currentLayout].classList.add('active');
+            rootHelper.classList.toggle('hidden', !['radial', 'hierarchical'].includes(currentLayout));
+            update();
+            applyCurrentLayout();
+            fitView(0);
+        }
+
+        window.onresize = () => { location.reload(); }
+
+        // Make deleteProject available globally for the inline onclick handler
+        window.deleteProject = deleteProject;
+    </script>
+</body>
+</html>

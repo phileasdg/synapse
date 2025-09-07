@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synapse | Networked Notebook</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
+    <!-- KaTeX for LaTeX Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Theme Variables */
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --bg-tertiary: #f0f1f3;
+            --text-primary: #1a1a1a;
+            --text-secondary: #4a5568;
+            --text-tertiary: #718096;
+            --border-color: #e2e4e8;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --success: #10b981;
+            --danger: #ef4444;
+            --node-bg: #ffffff;
+            --node-border: #d1d5db;
+            --link-color: #9ca3af;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0f0f0f;
+            --bg-secondary: #1a1a1a;
+            --bg-tertiary: #262626;
+            --text-primary: #e5e5e5;
+            --text-secondary: #a3a3a3;
+            --text-tertiary: #737373;
+            --border-color: #333333;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --success: #22c55e;
+            --danger: #f87171;
+            --node-bg: #1a1a1a;
+            --node-border: #404040;
+            --link-color: #525252;
+        }
+
+        /* General Styles */
+        body { 
+            font-family: 'Inter', sans-serif; 
+            overscroll-behavior: none;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes pulseRing {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+        
+        .modal-enter { animation: fadeIn 0.2s ease-out forwards; }
+        .pulse-ring { animation: pulseRing 1.5s infinite; }
+
+        /* Header Styles */
+        .header-bg {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        /* Button Styles */
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        
+        .btn:hover {
+            background: var(--bg-tertiary);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+        
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+        }
+        
+        .btn-success {
+            background: var(--success);
+            color: white;
+            border-color: var(--success);
+        }
+        
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+            border-color: var(--danger);
+        }
+
+        /* SVG & Node Styles */
+        .canvas-bg {
+            background: var(--bg-primary);
+            background-image: radial-gradient(var(--border-color) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        .node-shape { 
+            stroke-width: 1.5px; 
+            transition: all 0.2s ease-in-out;
+            fill: var(--node-bg);
+            stroke: var(--node-border);
+        }
+        
+        .node:hover .node-shape { 
+            stroke: var(--accent);
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+        }
+        
+        .node-shape-selected { 
+            stroke: var(--accent) !important;
+            stroke-width: 2.5px !important;
+        }
+        
+        .node-shape-root { 
+            stroke: var(--success) !important;
+            stroke-width: 2.5px;
+        }
+        
+        .node-pending-connection {
+            position: relative;
+        }
+        
+        .node-pending-connection .node-shape {
+            stroke: var(--accent) !important;
+            stroke-width: 2.5px !important;
+            stroke-dasharray: 5,5;
+            animation: dashOffset 0.5s linear infinite;
+        }
+        
+        @keyframes dashOffset {
+            to { stroke-dashoffset: -10; }
+        }
+
+        /* Node Action Buttons */
+        .node-action-button { 
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            user-select: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border-color);
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.8);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        
+        .node:hover .node-action-button,
+        .node.selected .node-action-button {
+            opacity: 1;
+            pointer-events: auto;
+            transform: scale(1);
+        }
+
+        .node-action-button.add { background: var(--accent); color: white; }
+        .node-action-button.edit { background: var(--text-secondary); color: white; }
+        .node-action-button.delete { background: var(--danger); color: white; }
+        .node-action-button.download { background: var(--success); color: white; }
+        
+        .node-action-button:hover { transform: scale(1.1); }
+
+        /* Link Styles */
+        .link { 
+            stroke: var(--link-color);
+            stroke-width: 1.5px;
+            opacity: 0.6;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .link:hover, .link.selected { 
+            stroke: var(--accent);
+            stroke-width: 2.5px;
+            opacity: 1;
+        }
+
+        /* Node Content */
+        .node-text {
+            fill: var(--text-primary);
+        }
+        
+        .node-markdown-render {
+            color: var(--text-secondary);
+            font-size: 10px;
+            line-height: 1.25;
+            overflow: hidden;
+            word-wrap: break-word;
+            text-align: left;
+            max-height: 100%;
+        }
+
+        /* Modal Styles */
+        .modal-bg {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .modal-input {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            transition: all 0.2s;
+        }
+        
+        .modal-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        /* Tab Styles */
+        .modal-tab {
+            padding: 8px 16px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            color: var(--text-tertiary);
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+        
+        .modal-tab:hover { color: var(--text-secondary); }
+        .modal-tab.active { 
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        /* Search Box */
+        .search-container {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            margin-top: 0.25rem;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 100;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .search-result-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-color);
+            transition: background 0.2s;
+        }
+        
+        .search-result-item:hover {
+            background: var(--bg-tertiary);
+        }
+        
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        /* Project Selector */
+        .project-selector {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+        }
+
+        /* Connection Indicator */
+        .connection-indicator {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 2rem;
+            font-weight: 500;
+            z-index: 50;
+            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.25);
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        /* Markdown Preview */
+        #markdown-preview, #reader-preview-content {
+            color: var(--text-primary);
+            background: var(--bg-primary);
+        }
+        
+        #markdown-preview h1, #markdown-preview h2, #markdown-preview h3,
+        #reader-preview-content h1, #reader-preview-content h2, #reader-preview-content h3 {
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+            margin-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+        
+        #markdown-preview code, #reader-preview-content code {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9em;
+        }
+        
+        #markdown-preview pre, #reader-preview-content pre {
+            background: var(--bg-tertiary);
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+        
+        #markdown-preview a, #reader-preview-content a {
+            color: var(--accent);
+            text-decoration: underline;
+            text-decoration-thickness: 1px;
+            text-underline-offset: 2px;
+        }
+    </style>
+</head>
+<body data-theme="light" class="h-screen w-screen overflow-hidden flex flex-col">
+
+    <!-- Connection Indicator -->
+    <div id="connection-indicator" class="connection-indicator hidden">
+        <span id="connection-message">Click another node to create connection</span>
+        <button id="cancel-connection" class="ml-3 px-3 py-1 bg-white/20 rounded-full text-sm hover:bg-white/30 transition">Cancel</button>
+    </div>
+
+    <!-- Header -->
+    <header class="header-bg p-4 z-20">
+        <div class="container mx-auto flex justify-between items-center flex-wrap gap-4">
+            <div class="flex items-center gap-4">
+                <h1 class="text-2xl font-bold tracking-tight">Synapse</h1>
+                <select id="project-selector" class="project-selector">
+                    <option value="default">Default Project</option>
+                </select>
+                <button id="new-project-btn" class="btn btn-primary text-sm">+ New Project</button>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <!-- Search -->
+                <div class="search-container">
+                    <input type="text" id="search-input" placeholder="Search nodes..." class="modal-input w-64">
+                    <div id="search-results" class="search-results hidden"></div>
+                </div>
+                
+                <!-- Layout Controls -->
+                <div class="flex items-center gap-2" role="group">
+                    <button id="layout-force" class="btn text-sm">Force</button>
+                    <button id="layout-radial" class="btn text-sm">Radial</button>
+                    <button id="layout-hierarchical" class="btn text-sm">Hierarchical</button>
+                    <button id="layout-circular" class="btn text-sm">Circular</button>
+                    <button id="layout-grid" class="btn text-sm">Grid</button>
+                </div>
+                
+                <!-- Actions -->
+                <button id="export-graph" class="btn btn-success text-sm">Export</button>
+                <label for="import-input" class="btn btn-primary text-sm cursor-pointer">Import</label>
+                <input type="file" id="import-input" class="hidden" accept=".json,application/json">
+                <button id="clear-graph" class="btn btn-danger text-sm">Clear</button>
+                
+                <!-- Theme Toggle -->
+                <button id="theme-toggle" class="btn p-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sun-icon">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="moon-icon hidden">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+                
+                <!-- Help -->
+                <button id="instructions-toggle" class="btn p-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Instructions Panel -->
+    <div id="instructions-panel" class="hidden absolute top-20 right-4 modal-bg p-5 rounded-xl shadow-2xl z-30 max-w-sm">
+        <h2 class="font-bold text-lg mb-4">How to Use</h2>
+        <ul class="space-y-3 text-sm">
+            <li><strong>Pan & Zoom:</strong> Drag the canvas or use scroll wheel</li>
+            <li><strong>Add Node:</strong> Click empty canvas area</li>
+            <li><strong>Connect Nodes:</strong> Click one node, then another</li>
+            <li><strong>Edit Node:</strong> Double-click or use edit button</li>
+            <li><strong>Search:</strong> Use search box to find nodes</li>
+            <li><strong>Projects:</strong> Switch between projects using dropdown</li>
+            <li><strong>Theme:</strong> Toggle light/dark mode</li>
+            <li><strong>Cancel Connection:</strong> Press ESC or click Cancel</li>
+        </ul>
+    </div>
+
+    <!-- Main Canvas -->
+    <main class="flex-1 relative canvas-bg">
+        <svg id="network-canvas" class="w-full h-full cursor-grab"></svg>
+    </main>
+
+    <!-- Node Edit Modal -->
+    <div id="node-modal" class="hidden fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4">
+        <div class="modal-bg rounded-xl shadow-xl p-8 w-full max-w-5xl h-[85vh] modal-enter flex flex-col">
+            <h2 class="text-2xl font-bold mb-6 flex-shrink-0">Edit Node</h2>
+            
+            <div class="flex gap-8 flex-1 min-h-0">
+                <!-- Editor Side -->
+                <div class="w-1/2 flex flex-col space-y-4">
+                    <div>
+                        <label for="node-name" class="block text-sm font-medium mb-2">Title</label>
+                        <input type="text" id="node-name" class="modal-input w-full">
+                    </div>
+
+                    <!-- Tabs -->
+                    <div class="flex-shrink-0 border-b border-color">
+                        <nav class="flex space-x-2" id="modal-tabs">
+                            <button data-tab="content" class="modal-tab active">Content</button>
+                            <button data-tab="attachments" class="modal-tab">Attachments</button>
+                            <button data-tab="connections" class="modal-tab">Connections</button>
+                        </nav>
+                    </div>
+
+                    <!-- Tab Content -->
+                    <div class="flex-1 min-h-0">
+                        <div id="tab-content" class="h-full flex flex-col">
+                            <label for="node-content" class="block text-sm font-medium mb-2">Content (Markdown + LaTeX)</label>
+                            <textarea id="node-content" class="modal-input w-full flex-1 font-mono text-sm" style="resize: none;"></textarea>
+                        </div>
+                        <div id="tab-attachments" class="hidden h-full flex flex-col">
+                            <div class="flex-1 space-y-3 overflow-y-auto mb-3" id="attachments-list"></div>
+                            <div class="flex gap-2">
+                                <input type="text" id="attachment-input" placeholder="Add URL..." class="modal-input flex-1">
+                                <button id="add-attachment-btn" class="btn btn-primary">Add</button>
+                            </div>
+                        </div>
+                        <div id="tab-connections" class="hidden h-full flex flex-col">
+                            <div class="flex-1 space-y-2 overflow-y-auto mb-2" id="connections-list"></div>
+                            <div class="flex gap-2">
+                                <select id="add-connection-select" class="modal-input flex-1"></select>
+                                <button id="add-connection-btn" class="btn btn-primary">Connect</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Preview Side -->
+                <div class="w-1/2 flex flex-col min-h-0">
+                    <label class="block text-sm font-medium mb-2 flex-shrink-0">Live Preview</label>
+                    <div id="markdown-preview" class="flex-1 modal-input p-4 overflow-y-auto"></div>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-between items-center flex-shrink-0">
+                <button id="modal-delete-node" class="btn btn-danger">Delete Node</button>
+                <div class="flex space-x-3">
+                    <button id="modal-cancel" class="btn">Cancel</button>
+                    <button id="modal-save" class="btn btn-primary">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirm-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="modal-bg rounded-xl shadow-xl p-8 w-full max-w-md modal-enter">
+            <h2 class="text-xl font-bold mb-4">Confirm Action</h2>
+            <p class="mb-8" id="confirm-message">Are you sure?</p>
+            <div class="flex justify-end space-x-3">
+                <button id="confirm-cancel" class="btn">Cancel</button>
+                <button id="confirm-ok" class="btn btn-danger">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reader Modal -->
+    <div id="markdown-reader-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="modal-bg rounded-xl shadow-xl p-8 w-full max-w-4xl h-[85vh] modal-enter flex flex-col">
+            <h2 id="reader-title" class="text-3xl font-bold mb-6 flex-shrink-0">Node Content</h2>
+            <div id="reader-preview-content" class="flex-1 modal-input p-6 overflow-y-auto"></div>
+            <div class="mt-6 flex justify-end space-x-3 flex-shrink-0">
+                <button id="reader-close-btn" class="btn btn-primary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edge Edit Panel -->
+    <div id="edge-edit-panel" class="hidden absolute modal-bg rounded-lg shadow-xl p-2 z-30 modal-enter">
+        <div class="flex items-center gap-2">
+            <button id="edge-dir-from" class="btn text-sm px-2 py-1">←</button>
+            <button id="edge-dir-to" class="btn text-sm px-2 py-1">→</button>
+            <button id="edge-dir-both" class="btn text-sm px-2 py-1">↔</button>
+            <button id="edge-delete" class="btn btn-danger text-sm px-2 py-1">×</button>
+        </div>
+    </div>
+
+    <script>
+        // Project Management
+        let currentProject = 'default';
+        let projects = {};
+        
+        // Initialize projects from localStorage
+        function loadProjects() {
+            const savedProjects = localStorage.getItem('synapse-projects');
+            if (savedProjects) {
+                projects = JSON.parse(savedProjects);
+            } else {
+                projects = { default: { nodes: [], links: [], nodeIdCounter: 0, currentRootId: null } };
+            }
+        }
+        
+        function saveProjects() {
+            localStorage.setItem('synapse-projects', JSON.stringify(projects));
+        }
+        
+        function switchProject(projectName) {
+            // Save current project state
+            if (currentProject && projects[currentProject]) {
+                projects[currentProject] = {
+                    nodes: nodes.map(n => ({...n, fx: null, fy: null})),
+                    links: links.map(l => ({ source: l.source.id, target: l.target.id, direction: l.direction })),
+                    nodeIdCounter,
+                    currentRootId
+                };
+            }
+            
+            // Load new project
+            currentProject = projectName;
+            if (projects[projectName]) {
+                const project = projects[projectName];
+                nodes = project.nodes || [];
+                nodeIdCounter = project.nodeIdCounter || 0;
+                currentRootId = project.currentRootId;
+                const nodeMap = new Map(nodes.map(n => [n.id, n]));
+                links = (project.links || []).map(l => ({
+                    source: nodeMap.get(l.source),
+                    target: nodeMap.get(l.target),
+                    direction: l.direction || 'to'
+                })).filter(l => l.source && l.target);
+            } else {
+                nodes = [];
+                links = [];
+                nodeIdCounter = 0;
+                currentRootId = null;
+            }
+            
+            saveProjects();
+            update();
+            applyCurrentLayout();
+        }
+        
+        // Theme Management
+        function initTheme() {
+            const savedTheme = localStorage.getItem('synapse-theme');
+            const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            const theme = savedTheme || systemTheme;
+            document.body.setAttribute('data-theme', theme);
+            updateThemeIcon(theme);
+        }
+        
+        function toggleTheme() {
+            const currentTheme = document.body.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.body.setAttribute('data-theme', newTheme);
+            localStorage.setItem('synapse-theme', newTheme);
+            updateThemeIcon(newTheme);
+        }
+        
+        function updateThemeIcon(theme) {
+            const sunIcon = document.querySelector('.sun-icon');
+            const moonIcon = document.querySelector('.moon-icon');
+            if (theme === 'dark') {
+                sunIcon.classList.add('hidden');
+                moonIcon.classList.remove('hidden');
+            } else {
+                moonIcon.classList.add('hidden');
+                sunIcon.classList.remove('hidden');
+            }
+        }
+
+        // Core D3 Setup
+        const svg = d3.select("#network-canvas");
+        const width = svg.node().getBoundingClientRect().width;
+        const height = svg.node().getBoundingClientRect().height;
+        const container = svg.append("g");
+        
+        const defs = container.append('defs');
+        
+        // Arrow markers
+        defs.append('marker')
+            .attr('id', 'arrowhead').attr('viewBox', '-10 -5 10 10').attr('refX', -1).attr('refY', 0)
+            .attr('orient', 'auto').attr('markerWidth', 8).attr('markerHeight', 8)
+            .append('svg:path').attr('d', 'M -10,-5 L 0,0 L -10,5').attr('fill', 'var(--link-color)');
+            
+        defs.append('marker')
+            .attr('id', 'arrowhead-start').attr('viewBox', '-10 -5 10 10').attr('refX', 1).attr('refY', 0)
+            .attr('orient', 'auto').attr('markerWidth', 8).attr('markerHeight', 8)
+            .append('svg:path').attr('d', 'M 0,-5 L 10,0 L 0,5').attr('fill', 'var(--link-color)');
+
+        // KaTeX Extension
+        const katexExtension = () => [{
+            type: 'output',
+            filter: function (html) {
+                if (typeof katex === 'undefined') return html;
+                const parts = html.split(/(<code[\s\S]*?>[\s\S]*?<\/code>|<pre[\s\S]*?>[\s\S]*?<\/pre>)/);
+                const processedParts = parts.map((part, index) => {
+                    if (index % 2 === 1) return part;
+                    part = part.replace(/<p>\$\$([\s\S]+?)\$\$<\/p>/g, (match, content) => {
+                        try {
+                            return katex.renderToString(content.trim(), { displayMode: true, throwOnError: false });
+                        } catch (e) { return `<span class="text-red-500">LaTeX Error: ${e.message}</span>`; }
+                    });
+                    part = part.replace(/(?<!\\)\$([^\$\n]+?)\$/g, (match, content) => {
+                        try {
+                            return katex.renderToString(content.trim(), { displayMode: false, throwOnError: false });
+                        } catch (e) { return `<span class="text-red-500">LaTeX Error: ${e.message}</span>`; }
+                    });
+                    return part;
+                });
+                return processedParts.join('');
+            }
+        }];
+        showdown.extension('katex', katexExtension);
+        const mdConverter = new showdown.Converter({ extensions: ['katex'] });
+
+        // State Variables
+        let nodes = [];
+        let links = [];
+        let nodeIdCounter = 0;
+        let selectedNodeForEdge = null;
+        let selectedLink = null;
+        let currentLayout = 'force';
+        let currentRootId = null;
+        let activeNodeEditing = null;
+        let activeNodeReading = null;
+
+        // Initialize
+        loadProjects();
+        initTheme();
+
+        // D3 Simulation
+        const simulation = d3.forceSimulation(nodes)
+            .force("link", d3.forceLink(links).id(d => d.id).distance(280))
+            .force("charge", d3.forceManyBody().strength(-1200))
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .on("tick", ticked);
+
+        let link = container.append("g").attr("class", "links").selectAll(".link");
+        let node = container.append("g").attr("class", "nodes").selectAll(".node");
+
+        const zoom = d3.zoom().on("zoom", (event) => container.attr("transform", event.transform));
+        svg.call(zoom);
+
+        // Helper Functions
+        function isNodeEmpty(nodeData) {
+            return (!nodeData.content || nodeData.content.trim() === '') && 
+                   (!nodeData.attachments || nodeData.attachments.length === 0);
+        }
+
+        function isImageUrl(url) {
+            try {
+                if(!url) return false;
+                const urlObj = new URL(url, window.location.href);
+                return /\.(jpg|jpeg|png|gif|svg|webp)$/i.test(urlObj.pathname);
+            } catch(e) { return false; }
+        }
+
+        function downloadMarkdown(content, filename) {
+            if (!content) return;
+            const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${filename || 'content'}.md`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Search Functionality
+        const searchInput = document.getElementById('search-input');
+        const searchResults = document.getElementById('search-results');
+        
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            if (!query) {
+                searchResults.classList.add('hidden');
+                return;
+            }
+            
+            const matches = nodes.filter(n => 
+                n.name.toLowerCase().includes(query) || 
+                (n.content && n.content.toLowerCase().includes(query))
+            );
+            
+            if (matches.length === 0) {
+                searchResults.innerHTML = '<div class="search-result-item">No results found</div>';
+            } else {
+                searchResults.innerHTML = matches.slice(0, 10).map(n => 
+                    `<div class="search-result-item" data-node-id="${n.id}">
+                        <div class="font-medium">${n.name}</div>
+                        ${n.content ? `<div class="text-sm opacity-75">${n.content.substring(0, 100)}...</div>` : ''}
+                    </div>`
+                ).join('');
+            }
+            searchResults.classList.remove('hidden');
+        });
+        
+        searchResults.addEventListener('click', (e) => {
+            const item = e.target.closest('.search-result-item');
+            if (item && item.dataset.nodeId) {
+                const nodeId = parseInt(item.dataset.nodeId);
+                const targetNode = nodes.find(n => n.id === nodeId);
+                if (targetNode) {
+                    // Center on node
+                    const transform = d3.zoomIdentity
+                        .translate(width / 2 - targetNode.x, height / 2 - targetNode.y)
+                        .scale(1.5);
+                    svg.transition().duration(750).call(zoom.transform, transform);
+                    
+                    // Highlight node
+                    d3.selectAll('.node').classed('selected', false);
+                    d3.selectAll('.node').filter(d => d.id === nodeId).classed('selected', true);
+                }
+                searchResults.classList.add('hidden');
+                searchInput.value = '';
+            }
+        });
+        
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-container')) {
+                searchResults.classList.add('hidden');
+            }
+        });
+
+        // Connection Indicator Management
+        function showConnectionIndicator() {
+            const indicator = document.getElementById('connection-indicator');
+            indicator.classList.remove('hidden');
+        }
+        
+        function hideConnectionIndicator() {
+            const indicator = document.getElementById('connection-indicator');
+            indicator.classList.add('hidden');
+        }
+        
+        document.getElementById('cancel-connection').addEventListener('click', () => {
+            if (selectedNodeForEdge) {
+                selectedNodeForEdge = null;
+                d3.selectAll('.node').classed('selected', false).classed('node-pending-connection', false);
+                hideConnectionIndicator();
+            }
+        });
+        
+        // ESC key to cancel connection
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && selectedNodeForEdge) {
+                selectedNodeForEdge = null;
+                d3.selectAll('.node').classed('selected', false).classed('node-pending-connection', false);
+                hideConnectionIndicator();
+            }
+        });
+
+        // Core Update Function
+        function update() {
+            link = link.data(links, d => `${d.source.id}-${d.target.id}`);
+            link.exit().remove();
+            link = link.enter().append("line")
+                .attr("class", "link")
+                .on('click', handleLinkClick)
+                .merge(link);
+
+            link.attr('marker-start', d => (d.direction === 'from' || d.direction === 'both') ? 'url(#arrowhead-start)' : null)
+                .attr('marker-end', d => (d.direction === 'to' || d.direction === 'both') ? 'url(#arrowhead)' : null);
+
+            node = node.data(nodes, d => d.id);
+            node.exit().remove();
+            
+            const nodeEnter = node.enter().append("g")
+                .attr("class", "node cursor-pointer")
+                .call(drag(simulation))
+                .on("click", handleNodeClick)
+                .on("dblclick", handleNodeDblClick)
+                .on("contextmenu", handleNodeRightClick);
+            
+            node = nodeEnter.merge(node);
+            node.each(function(d) { renderNodeContent(d3.select(this), d); });
+            node.selectAll('.node-shape').classed('node-shape-root', d => d.id === currentRootId && ['radial', 'hierarchical'].includes(currentLayout));
+            
+            simulation.nodes(nodes);
+            simulation.force("link").links(links);
+            if(currentLayout === 'force') simulation.alpha(0.3).restart();
+            else simulation.stop();
+            
+            ticked();
+            saveCurrentProject();
+        }
+
+        function renderNodeContent(group, d) {
+            group.selectAll("*").remove();
+            
+            const nodeWidth = 160;
+            const nodeHeight = 80;
+            const isRect = d.content || (d.attachments && d.attachments.length > 0);
+
+            // Node shape
+            if (isRect) {
+                group.append("rect")
+                    .attr("width", nodeWidth).attr("height", nodeHeight)
+                    .attr("x", -nodeWidth / 2).attr("y", -nodeHeight / 2)
+                    .attr("rx", 8)
+                    .attr("class", "node-shape");
+            } else {
+                group.append("circle")
+                    .attr("r", 35)
+                    .attr("class", "node-shape");
+            }
+
+            // Title
+            const title = d.name.length > 20 ? d.name.substring(0, 20) + '...' : d.name;
+            group.append("text")
+                .attr("class", "node-text")
+                .attr("font-size", "14px")
+                .attr("font-weight", "500")
+                .attr("text-anchor", isRect ? "start" : "middle")
+                .attr("x", isRect ? -nodeWidth / 2 + 12 : 0)
+                .attr("y", isRect ? -nodeHeight / 2 + 20 : 5)
+                .text(title);
+
+            // Content preview
+            if (isRect && d.content) {
+                const fo = group.append('foreignObject')
+                    .attr('x', -nodeWidth / 2 + 12)
+                    .attr('y', -nodeHeight / 2 + 30)
+                    .attr('width', nodeWidth - 24)
+                    .attr('height', nodeHeight - 40)
+                    .style('pointer-events', 'all')
+                    .style('cursor', 'pointer')
+                    .on('click', (e, d) => {
+                        e.stopPropagation();
+                        openMarkdownReaderModal(d);
+                    });
+                fo.html(`<div class="node-markdown-render">${mdConverter.makeHtml(d.content).substring(0, 200)}</div>`);
+            }
+
+            // Action buttons
+            const positions = isRect ? 
+                { add: {x: nodeWidth/2, y: -nodeHeight/2}, edit: {x: nodeWidth/2, y: nodeHeight/2}, delete: {x: -nodeWidth/2, y: -nodeHeight/2}, download: {x: -nodeWidth/2, y: nodeHeight/2} } :
+                { add: {x: 25, y: -25}, edit: {x: 25, y: 25}, delete: {x: -25, y: -25}, download: {x: -25, y: 25} };
+
+            // Add button
+            group.append('foreignObject')
+                .attr('x', positions.add.x - 12).attr('y', positions.add.y - 12)
+                .attr('width', 24).attr('height', 24)
+                .append('xhtml:div')
+                .attr('class', 'node-action-button add')
+                .html('＋')
+                .on('click', (e, d) => { e.stopPropagation(); addLinkedNode(d); });
+
+            // Edit button
+            group.append('foreignObject')
+                .attr('x', positions.edit.x - 12).attr('y', positions.edit.y - 12)
+                .attr('width', 24).attr('height', 24)
+                .append('xhtml:div')
+                .attr('class', 'node-action-button edit')
+                .html('<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>')
+                .on('click', (e, d) => { e.stopPropagation(); openNodeModal(d); });
+
+            // Delete button
+            group.append('foreignObject')
+                .attr('x', positions.delete.x - 12).attr('y', positions.delete.y - 12)
+                .attr('width', 24).attr('height', 24)
+                .append('xhtml:div')
+                .attr('class', 'node-action-button delete')
+                .html('×')
+                .on('click', (e, d) => { 
+                    e.stopPropagation();
+                    if (isNodeEmpty(d)) {
+                        deleteNode(d.id);
+                    } else {
+                        showConfirm(() => deleteNode(d.id), "Delete this node and all its content?");
+                    }
+                });
+        }
+
+        function handleNodeClick(event, d) {
+            event.stopPropagation();
+            hideEdgeEditPanel();
+            
+            if (!selectedNodeForEdge) {
+                selectedNodeForEdge = d;
+                d3.selectAll('.node').classed('selected', false).classed('node-pending-connection', false);
+                d3.select(event.currentTarget).classed('node-pending-connection', true);
+                showConnectionIndicator();
+            } else {
+                if (selectedNodeForEdge.id !== d.id) {
+                    const existingLinkIndex = links.findIndex(l => 
+                        (l.source.id === selectedNodeForEdge.id && l.target.id === d.id) || 
+                        (l.source.id === d.id && l.target.id === selectedNodeForEdge.id)
+                    );
+                    if (existingLinkIndex > -1) {
+                        links.splice(existingLinkIndex, 1);
+                    } else {
+                        links.push({ source: selectedNodeForEdge, target: d, direction: 'to' });
+                    }
+                }
+                selectedNodeForEdge = null;
+                d3.selectAll('.node').classed('selected', false).classed('node-pending-connection', false);
+                hideConnectionIndicator();
+                update();
+            }
+        }
+
+        function handleNodeDblClick(event, d) {
+            event.stopPropagation();
+            openNodeModal(d);
+        }
+
+        function handleNodeRightClick(event, d) {
+            event.preventDefault();
+            if (['radial', 'hierarchical'].includes(currentLayout)) {
+                currentRootId = d.id;
+                applyCurrentLayout();
+                update();
+            }
+        }
+
+        function handleLinkClick(event, d) {
+            event.stopPropagation();
+            selectedNodeForEdge = null;
+            d3.selectAll('.node').classed('selected', false).classed('node-pending-connection', false);
+            hideConnectionIndicator();
+
+            if (selectedLink === d) {
+                hideEdgeEditPanel();
+                return;
+            }
+
+            d3.selectAll('.link').classed('selected', false);
+            d3.select(this).classed('selected', true);
+            selectedLink = d;
+
+            const panel = document.getElementById('edge-edit-panel');
+            panel.style.left = `${event.pageX + 15}px`;
+            panel.style.top = `${event.pageY - 20}px`;
+            panel.classList.remove('hidden');
+        }
+
+        function hideEdgeEditPanel() {
+            document.getElementById('edge-edit-panel').classList.add('hidden');
+            if (selectedLink) {
+                d3.selectAll('.link').classed('selected', false);
+                selectedLink = null;
+            }
+        }
+
+        function deleteNode(nodeId) {
+            nodes = nodes.filter(n => n.id !== nodeId);
+            links = links.filter(l => l.source.id !== nodeId && l.target.id !== nodeId);
+            if(selectedNodeForEdge && selectedNodeForEdge.id === nodeId) {
+                selectedNodeForEdge = null;
+                hideConnectionIndicator();
+            }
+            if(currentRootId === nodeId) {
+                currentRootId = nodes.length > 0 ? nodes[0].id : null;
+            }
+            update();
+        }
+
+        function addLinkedNode(sourceNode) {
+            nodeIdCounter++;
+            const newNode = {
+                id: nodeIdCounter,
+                x: sourceNode.x + 120,
+                y: sourceNode.y + 120,
+                name: `Node ${nodeIdCounter}`,
+                content: '',
+                attachments: []
+            };
+            nodes.push(newNode);
+            links.push({ source: sourceNode, target: newNode, direction: 'to' });
+            update();
+        }
+
+        function ticked() {
+            node.attr("transform", d => `translate(${d.x},${d.y})`);
+            link.attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+        }
+
+        function drag(simulation) {
+            function dragstarted(event, d) {
+                if (!event.active && currentLayout === 'force') simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            }
+            function dragged(event, d) {
+                d.fx = event.x;
+                d.fy = event.y;
+                if (currentLayout !== 'force') {
+                    d.x = event.x;
+                    d.y = event.y;
+                    ticked();
+                }
+            }
+            function dragended(event, d) {
+                if (!event.active && currentLayout === 'force') simulation.alphaTarget(0);
+                if (currentLayout === 'force') {
+                    d.fx = null;
+                    d.fy = null;
+                }
+            }
+            return d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended);
+        }
+
+        // Layout Functions
+        function applyCurrentLayout() {
+            nodes.forEach(node => {
+                node.fx = null;
+                node.fy = null;
+            });
+            
+            switch (currentLayout) {
+                case 'force':
+                    simulation.force("center", d3.forceCenter(width / 2, height / 2)).alpha(1).restart();
+                    break;
+                case 'circular':
+                    const r = Math.min(width, height) / 2.5;
+                    const step = (2 * Math.PI) / nodes.length;
+                    nodes.forEach((n, i) => {
+                        n.x = width / 2 + r * Math.cos(i * step);
+                        n.y = height / 2 + r * Math.sin(i * step);
+                    });
+                    ticked();
+                    break;
+                case 'grid':
+                    const cols = Math.ceil(Math.sqrt(nodes.length));
+                    if (cols === 0) break;
+                    const cellW = width / (cols + 1);
+                    const cellH = height / (Math.ceil(nodes.length / cols) + 1);
+                    nodes.forEach((n, i) => {
+                        n.x = (i % cols + 1) * cellW;
+                        n.y = (Math.floor(i / cols) + 1) * cellH;
+                    });
+                    ticked();
+                    break;
+                // Add radial and hierarchical layouts here if needed
+            }
+        }
+
+        // Modal Functions
+        function openNodeModal(nodeData) {
+            activeNodeEditing = nodeData;
+            document.getElementById('node-name').value = nodeData.name || '';
+            document.getElementById('node-content').value = nodeData.content || '';
+            updateLivePreview();
+            document.getElementById('node-modal').classList.remove('hidden');
+        }
+
+        function openMarkdownReaderModal(nodeData) {
+            if (!nodeData) return;
+            activeNodeReading = nodeData;
+            document.getElementById('reader-title').textContent = nodeData.name || 'Node Content';
+            document.getElementById('reader-preview-content').innerHTML = mdConverter.makeHtml(nodeData.content || '');
+            document.getElementById('markdown-reader-modal').classList.remove('hidden');
+        }
+
+        function updateLivePreview() {
+            const content = document.getElementById('node-content').value;
+            document.getElementById('markdown-preview').innerHTML = mdConverter.makeHtml(content);
+        }
+
+        function showConfirm(callback, message = "Are you sure?") {
+            document.getElementById('confirm-message').textContent = message;
+            document.getElementById('confirm-modal').classList.remove('hidden');
+            window.confirmCallback = callback;
+        }
+
+        function saveCurrentProject() {
+            if (currentProject && projects[currentProject]) {
+                projects[currentProject] = {
+                    nodes: nodes.map(n => ({...n, fx: null, fy: null})),
+                    links: links.map(l => ({ source: l.source.id, target: l.target.id, direction: l.direction })),
+                    nodeIdCounter,
+                    currentRootId
+                };
+                saveProjects();
+            }
+        }
+
+        // Event Listeners
+        document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+        document.getElementById('instructions-toggle').addEventListener('click', () => {
+            document.getElementById('instructions-panel').classList.toggle('hidden');
+        });
+
+        document.getElementById('node-content').addEventListener('input', updateLivePreview);
+
+        document.getElementById('modal-save').addEventListener('click', () => {
+            if (activeNodeEditing) {
+                const node = nodes.find(n => n.id === activeNodeEditing.id);
+                if(node) {
+                    node.name = document.getElementById('node-name').value;
+                    node.content = document.getElementById('node-content').value;
+                }
+            }
+            document.getElementById('node-modal').classList.add('hidden');
+            activeNodeEditing = null;
+            update();
+        });
+
+        document.getElementById('modal-cancel').addEventListener('click', () => {
+            document.getElementById('node-modal').classList.add('hidden');
+            activeNodeEditing = null;
+        });
+
+        document.getElementById('modal-delete-node').addEventListener('click', () => {
+            if(!activeNodeEditing) return;
+            showConfirm(() => {
+                deleteNode(activeNodeEditing.id);
+                document.getElementById('node-modal').classList.add('hidden');
+                activeNodeEditing = null;
+            }, "Delete this node?");
+        });
+
+        document.getElementById('reader-close-btn').addEventListener('click', () => {
+            document.getElementById('markdown-reader-modal').classList.add('hidden');
+            activeNodeReading = null;
+        });
+
+        document.getElementById('confirm-ok').addEventListener('click', () => {
+            if (window.confirmCallback) window.confirmCallback();
+            document.getElementById('confirm-modal').classList.add('hidden');
+            window.confirmCallback = null;
+        });
+
+        document.getElementById('confirm-cancel').addEventListener('click', () => {
+            document.getElementById('confirm-modal').classList.add('hidden');
+            window.confirmCallback = null;
+        });
+
+        document.getElementById('clear-graph').addEventListener('click', () => {
+            showConfirm(() => {
+                nodes = [];
+                links = [];
+                nodeIdCounter = 0;
+                currentRootId = null;
+                update();
+            }, "Clear the entire graph?");
+        });
+
+        // Layout buttons
+        ['force', 'radial', 'hierarchical', 'circular', 'grid'].forEach(layout => {
+            document.getElementById(`layout-${layout}`).addEventListener('click', () => {
+                currentLayout = layout;
+                document.querySelectorAll('[id^="layout-"]').forEach(btn => btn.classList.remove('btn-primary'));
+                document.getElementById(`layout-${layout}`).classList.add('btn-primary');
+                applyCurrentLayout();
+            });
+        });
+
+        // Edge panel buttons
+        document.getElementById('edge-dir-to').addEventListener('click', () => {
+            if (selectedLink) {
+                selectedLink.direction = 'to';
+                update();
+            }
+        });
+
+        document.getElementById('edge-dir-from').addEventListener('click', () => {
+            if (selectedLink) {
+                selectedLink.direction = 'from';
+                update();
+            }
+        });
+
+        document.getElementById('edge-dir-both').addEventListener('click', () => {
+            if (selectedLink) {
+                selectedLink.direction = 'both';
+                update();
+            }
+        });
+
+        document.getElementById('edge-delete').addEventListener('click', () => {
+            if (selectedLink) {
+                links = links.filter(l => l !== selectedLink);
+                hideEdgeEditPanel();
+                update();
+            }
+        });
+
+        // Canvas click
+        svg.on('click', (event) => {
+            if (event.target.isEqualNode(svg.node())) {
+                hideEdgeEditPanel();
+                if (selectedNodeForEdge) {
+                    selectedNodeForEdge = null;
+                    d3.selectAll('.node').classed('selected', false).classed('node-pending-connection', false);
+                    hideConnectionIndicator();
+                } else {
+                    const [x, y] = d3.pointer(event, container.node());
+                    nodeIdCounter++;
+                    const newNode = {
+                        id: nodeIdCounter,
+                        x, y,
+                        name: `Node ${nodeIdCounter}`,
+                        content: '',
+                        attachments: []
+                    };
+                    nodes.push(newNode);
+                    if (currentRootId === null) currentRootId = newNode.id;
+                    update();
+                }
+            }
+        });
+
+        // Project selector
+        const projectSelector = document.getElementById('project-selector');
+        
+        function updateProjectSelector() {
+            projectSelector.innerHTML = Object.keys(projects).map(name => 
+                `<option value="${name}" ${name === currentProject ? 'selected' : ''}>${name}</option>`
+            ).join('');
+        }
+        
+        projectSelector.addEventListener('change', (e) => {
+            switchProject(e.target.value);
+        });
+        
+        document.getElementById('new-project-btn').addEventListener('click', () => {
+            const name = prompt('Enter project name:');
+            if (name && !projects[name]) {
+                projects[name] = { nodes: [], links: [], nodeIdCounter: 0, currentRootId: null };
+                saveProjects();
+                updateProjectSelector();
+                switchProject(name);
+            }
+        });
+
+        // Export/Import
+        document.getElementById('export-graph').addEventListener('click', () => {
+            const dataStr = JSON.stringify(projects[currentProject], null, 2);
+            const blob = new Blob([dataStr], {type: "application/json"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${currentProject}-graph.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        document.getElementById('import-input').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    showConfirm(() => {
+                        projects[currentProject] = data;
+                        switchProject(currentProject);
+                    }, "Import will overwrite current project. Continue?");
+                } catch (error) {
+                    console.error("Failed to import:", error);
+                }
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        });
+
+        // Tab handling
+        document.getElementById('modal-tabs').addEventListener('click', (e) => {
+            if (e.target.matches('.modal-tab')) {
+                document.querySelectorAll('.modal-tab').forEach(tab => tab.classList.remove('active'));
+                e.target.classList.add('active');
+                document.querySelectorAll('[id^="tab-"]').forEach(panel => panel.classList.add('hidden'));
+                document.getElementById(`tab-${e.target.dataset.tab}`).classList.remove('hidden');
+            }
+        });
+
+        // Initialize
+        window.onload = () => {
+            updateProjectSelector();
+            switchProject(currentProject);
+            
+            if (nodes.length === 0) {
+                nodeIdCounter = 1;
+                nodes.push({
+                    id: 1,
+                    x: width / 2,
+                    y: height / 2,
+                    name: 'Welcome to Synapse',
+                    content: '# Welcome!\n\nDouble-click to edit this node.',
+                    attachments: []
+                });
+                currentRootId = 1;
+            }
+            
+            update();
+            applyCurrentLayout();
+        };
+    </script>
+</body>
+</html>
