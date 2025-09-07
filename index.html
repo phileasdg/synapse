@@ -8,6 +8,10 @@
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
     
+    <!-- Prism.js for Syntax Highlighting -->
+    <link id="prism-dark-theme" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" xintegrity="sha512-mIs9kKbaw6JZFfSuo+MovJHGJDRsigVRagCk_b7wEVfbEzSCDZgrQlgokiPf7gEaiJ7sYKFFKNnzQsAZTOK6dg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link id="prism-light-theme" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" xintegrity="sha512-tN7Ec6zAFaVSG3TpNAKtk4DOHNpSw0ypEuGtT8rLBoLvSundwnLGGvbRiJlyJlCMBDLSHiyl4cAACc25MrupeA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
     <!-- KaTeX for LaTeX Rendering -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" xintegrity="sha384-n8MVd4RsNIU0KOVEMQNogNjeASiDdq9VNB+GTp2zpITXe5MLlo4CQTlMjNMUqsds" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" xintegrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGqsACQJMuGbi" crossorigin="anonymous"></script>
@@ -111,8 +115,8 @@
             50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--border-focus) 90%, var(--bg-ui)); }
         }
         .modal-enter { animation: fadeIn 0.2s ease-out forwards; }
-        /* MODIFICATION: Made deselected nodes more visible during search */
-        .search-fade { filter: grayscale(80%) opacity(0.5); transition: filter 0.3s, opacity 0.3s; }
+        /* MODIFICATION: Removed transparency from search fade */
+        .search-fade { filter: grayscale(100%); transition: filter 0.3s; }
 
         /* SVG, Nodes, Links */
         .node-shape { stroke-width: 1px; stroke: var(--border); fill: var(--bg-ui); transition: all 0.2s ease-in-out; }
@@ -121,16 +125,22 @@
         .node-shape.searched-match { stroke: var(--border-focus) !important; stroke-width: 2.5px; }
         .node-shape-root { stroke: #22c55e !important; stroke-width: 2.5px; }
 
-        .link { stroke: var(--text-secondary); stroke-width: 1.5px; opacity: 0.6; transition: all 0.2s; pointer-events: none; }
-        .link.selected { stroke: var(--border-focus); stroke-width: 2.5px; opacity: 1; }
-        #arrowhead path, #arrowhead-start path { fill: var(--text-secondary); }
+        /* MODIFICATION: Replaced opacity with color mixing for a solid color */
+        .link { 
+            stroke: color-mix(in srgb, var(--text-secondary) 80%, var(--bg-main)); 
+            stroke-width: 1.5px; 
+            transition: all 0.2s; 
+            pointer-events: none; 
+        }
+        .link.selected { stroke: var(--border-focus); stroke-width: 2.5px; }
+        #arrowhead path, #arrowhead-start path { fill: color-mix(in srgb, var(--text-secondary) 80%, var(--bg-main)); }
         #arrowhead-selected path, #arrowhead-start-selected path { fill: var(--border-focus); }
 
         /* Node Content & UI */
         .node-title { font-family: var(--font-ui); font-weight: 600; font-size: 14px; fill: var(--text-primary); }
         .node-image-preview { object-fit: cover; width: 100%; height: 100%; }
-        .node-markdown-render { font-family: var(--font-body); color: var(--text-secondary); font-size: 10px; line-height: 1.25; overflow: hidden; word-wrap: break-word; text-align: left; pointer-events: none; display: block; height: 100%; }
-        .node-markdown-render h1, .node-markdown-render h2, .node-markdown-render h3 { font-size: 11px; font-weight: 600; margin: 0; padding: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+        .node-markdown-render { font-family: var(--font-body); color: var(--text-secondary); font-size: 12px; line-height: 1.35; overflow: hidden; word-wrap: break-word; text-align: left; pointer-events: none; display: block; height: 100%; }
+        .node-markdown-render h1, .node-markdown-render h2, .node-markdown-render h3 { font-size: 13px; font-weight: 600; margin: 0; padding: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
         .node-markdown-render p, .node-markdown-render ul, .node-markdown-render ol { margin: 0; padding: 0; }
         .node-markdown-render pre, .node-markdown-render code, .node-markdown-render blockquote, .node-markdown-render img { display: none; }
         .node-attachments-container { color: var(--text-secondary); }
@@ -161,12 +171,29 @@
         .preview-content a.ui-button { color: var(--text-secondary); text-decoration: none; }
         .preview-content a.ui-button:hover { color: var(--text-primary); }
         .preview-content a.ui-button-accent { color: var(--text-accent); text-decoration: none; }
-        .preview-content code { background-color: var(--bg-ui-hover); padding: 0.2rem 0.4rem; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
-        .preview-content pre { background-color: var(--bg-main); padding: 1rem; border-radius: 8px; border: 1px solid var(--border); overflow-x: auto; }
+        /* MODIFICATION: Style inline code to be more distinct */
+        .preview-content code {
+            background-color: color-mix(in srgb, var(--text-primary) 5%, var(--bg-ui));
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+            border: 1px solid var(--border);
+        }
+        /* MODIFICATION: Let Prism.js theme handle styling for pre tags */
+        .preview-content pre { 
+            overflow-x: auto; 
+            border-radius: 8px; /* Ensure pre tags have rounded corners */
+        }
         .preview-content blockquote { border-left: 3px solid var(--border-focus); padding-left: 1rem; color: var(--text-secondary); margin: 1rem 0; }
         .preview-content p { margin-bottom: 1rem; }
-        .preview-content ul, .preview-content ol { padding-left: 1.5rem; margin-bottom: 1rem; }
+        /* MODIFICATION: Fix list item display */
+        .preview-content ul, .preview-content ol { padding-left: 2rem; margin-bottom: 1rem; }
         .preview-content li { margin-bottom: 0.5rem; }
+        .preview-content ul { list-style-type: disc; }
+        .preview-content ol { list-style-type: decimal; }
+        .preview-content ul ul, .preview-content ol ul { list-style-type: circle; }
+        .preview-content ul ul ul, .preview-content ol ul ul { list-style-type: square; }
         .preview-content img { max-width: 100%; border-radius: 0.5rem; margin-top: 1rem; margin-bottom: 1rem; }
 
         /* MODIFICATION: Styles for internal node links in Markdown previews */
@@ -223,7 +250,7 @@
                 <div class="h-6 w-px bg-border hidden sm:block"></div>
                 <div class="flex items-center gap-2">
                     <span id="current-project-name" class="text-sm text-secondary hidden sm:block">Untitled Notework</span>
-                    <button id="save-project" title="Save Notework" class="ui-button px-3 py-1 text-sm rounded-md">Save</button>
+                    <button id="save-project" title="Save Notework As..." class="ui-button px-3 py-1 text-sm rounded-md">Save As...</button>
                     <label for="open-project-input" title="Open Notework" class="ui-button px-3 py-1 text-sm rounded-md cursor-pointer">Open</label>
                     <input type="file" id="open-project-input" class="hidden" accept=".json,.synapse,application/json">
                     <button id="new-project" title="New Notework" class="ui-button px-3 py-1 text-sm rounded-md">New</button>
@@ -262,12 +289,11 @@
         <h3 class="text-sm font-semibold text-secondary mb-2">Layout</h3>
         <div class="grid grid-cols-2 gap-2">
             <button id="layout-force" class="ui-button px-3 py-2 text-sm rounded-md w-full">Force</button>
-            <button id="layout-radial" class="ui-button px-3 py-2 text-sm rounded-md w-full">Radial</button>
             <button id="layout-hierarchical" class="ui-button px-3 py-2 text-sm rounded-md w-full">Tree</button>
             <button id="layout-circular" class="ui-button px-3 py-2 text-sm rounded-md w-full">Circular</button>
             <button id="layout-grid" class="ui-button px-3 py-2 text-sm rounded-md w-full col-span-2">Grid</button>
         </div>
-        <p class="text-xs text-secondary mt-2">For Tree & Radial, right-click a node to set it as root.</p>
+        <p class="text-xs text-secondary mt-2">For Tree layout, right-click a node to set it as root.</p>
 
         <hr class="my-4 border-border">
 
@@ -331,7 +357,7 @@
         const projectNameSpan = document.getElementById('current-project-name');
         const modalContainer = document.getElementById('modal-container');
         const edgeEditPanel = document.getElementById('edge-edit-panel');
-        const layoutButtons = { force: document.getElementById('layout-force'), radial: document.getElementById('layout-radial'), hierarchical: document.getElementById('layout-hierarchical'), circular: document.getElementById('layout-circular'), grid: document.getElementById('layout-grid'), }; 
+        const layoutButtons = { force: document.getElementById('layout-force'), hierarchical: document.getElementById('layout-hierarchical'), circular: document.getElementById('layout-circular'), grid: document.getElementById('layout-grid'), }; 
         let node, link, linkHitbox; // D3 selections
 
         const ICONS = { 
@@ -368,11 +394,22 @@
         const themes = ['warm', 'light', 'dark'];
 
         function applyTheme(theme) {
+            const lightThemeLink = document.getElementById('prism-light-theme');
+            const darkThemeLink = document.getElementById('prism-dark-theme');
+
             document.body.classList.remove('theme-warm', 'theme-light', 'theme-dark');
             document.body.classList.add(`theme-${theme}`);
             Object.values(themeIcons).forEach(icon => icon.classList.add('hidden'));
             if (themeIcons[theme]) {
                 themeIcons[theme].classList.remove('hidden');
+            }
+
+            if (theme === 'dark') {
+                darkThemeLink.disabled = false;
+                lightThemeLink.disabled = true;
+            } else { // 'warm' and 'light' themes use the light prism theme
+                darkThemeLink.disabled = true;
+                lightThemeLink.disabled = false;
             }
         }
 
@@ -511,14 +548,14 @@
                 }
                 selectedNodeForEdge = null;
                 update();
-                if(['radial', 'hierarchical'].includes(currentLayout)) applyCurrentLayout();
+                if(['hierarchical'].includes(currentLayout)) applyCurrentLayout();
             }
             updateConnectionStateIndicator();
         }
         
         function handleNodeRightClick(event, d) { 
             event.preventDefault(); 
-            if (['radial', 'hierarchical'].includes(currentLayout)) { 
+            if (['hierarchical'].includes(currentLayout)) { 
                 currentRootId = d.id; 
                 applyCurrentLayout(); 
                 update(); 
@@ -789,7 +826,7 @@
             nodes.push(newNode);
             links.push({ source: sourceNode, target: newNode, direction: 'to', type: 'manual' });
             update();
-            if(['radial', 'hierarchical'].includes(currentLayout)) applyCurrentLayout();
+            if(['hierarchical'].includes(currentLayout)) applyCurrentLayout();
         }
 
         function deleteNode(nodeId) {
@@ -845,20 +882,16 @@
         function resetGraphState() { nodes = []; links = []; nodeIdCounter = 0; currentRootId = null; currentProjectName = 'Untitled Notework'; isProjectFromFile = false; projectNameSpan.textContent = currentProjectName; searchInput.value = ''; update(); saveToLocal(); }
         document.getElementById('new-project').addEventListener('click', () => { showConfirm(resetGraphState, "Create a new notework? Any unsaved changes will be lost."); });
         document.getElementById('save-project').addEventListener('click', () => {
-            if(isProjectFromFile) {
-                exportGraph(`${currentProjectName}.synapse`);
-            } else {
-                const currentName = currentProjectName.replace(/\.synapse$|\.json$/i, '');
-                let filename = prompt("Enter a filename for your notework:", currentName);
-                if (filename) {
-                    currentProjectName = filename;
-                    projectNameSpan.textContent = currentProjectName;
-                    isProjectFromFile = true;
-                    if (!filename.toLowerCase().endsWith('.synapse')) {
-                        filename += '.synapse';
-                    }
-                    exportGraph(filename);
+            const currentName = currentProjectName.replace(/\.synapse$|\.json$/i, '');
+            let filename = prompt("Enter a filename for your notework:", currentName);
+            if (filename) {
+                currentProjectName = filename;
+                projectNameSpan.textContent = currentProjectName;
+                isProjectFromFile = true;
+                if (!filename.toLowerCase().endsWith('.synapse')) {
+                    filename += '.synapse';
                 }
+                exportGraph(filename);
             }
         });
         document.getElementById('open-project-input').addEventListener('change', (event) => { const file = event.target.files[0]; if (!file) return; currentProjectName = file.name.replace(/\.synapse$|\.json$/i, ''); projectNameSpan.textContent = currentProjectName; importGraph(event); });
@@ -940,7 +973,7 @@
                 currentLayout = layoutId; 
                 Object.values(layoutButtons).forEach(btn => btn.classList.remove('active')); 
                 layoutButtons[layoutId].classList.add('active'); 
-                if (['radial', 'hierarchical'].includes(layoutId)) { 
+                if (['hierarchical'].includes(layoutId)) { 
                     showActionHelper("Right-click a node to set it as the layout root."); 
                 } else if(selectedNodeForEdge) { 
                     /* Keep showing connection helper */ 
@@ -964,7 +997,7 @@
             loadFromLocal();
             if (nodes.length === 0) {
                 nodeIdCounter = 1;
-                nodes.push({ id: 1, x: width / 2, y: height / 2, name: `My First Node`, content: '# Welcome to Synapse!\n\nThis is your networked notebook. Here are some tips:\n\n- Hover over this node to see actions.\n- Create another node and type `[[My First Node]]` to see a text link appear!\n- Drag the background to pan & scroll to zoom.', attachments: ["https://placehold.co/600x400/C76A36/FFFFFF?text=Welcome!"] });
+                nodes.push({ id: 1, x: width / 2, y: height / 2, name: `My First Node`, content: '# Welcome to Synapse!\n\nThis is your networked notebook. Here are some tips:\n\n- Hover over this node to see actions.\n- Create another node and type [[My First Node]] to see a text link appear!\n- Drag the background to pan & scroll to zoom.', attachments: ["https://placehold.co/600x400/C76A36/FFFFFF?text=Welcome!"] });
                 currentRootId = 1;
             }
             updateAllMarkdownLinks();
@@ -1010,6 +1043,35 @@
             return Array.from(urls);
         }
 
+        function saveNodeFromModal(modal, nodeId) {
+            const node = nodes.find(n => n.id === nodeId);
+            if (!node) return;
+
+            const nodeNameInput = modal.querySelector('#node-name');
+            const nodeContentTextarea = modal.querySelector('#node-content');
+            const attachmentsList = modal.querySelector('#attachments-list');
+
+            if (!nodeNameInput || !nodeContentTextarea || !attachmentsList) {
+                console.error("Could not find modal elements to save from.");
+                return;
+            }
+
+            const oldName = node.name;
+            const newName = nodeNameInput.value;
+            node.name = newName;
+            node.content = nodeContentTextarea.value;
+            node.attachments = Array.from(attachmentsList.querySelectorAll('[data-url]')).map(item => item.dataset.url);
+
+            if (oldName.trim().toLowerCase() !== newName.trim().toLowerCase()) {
+                updateAllMarkdownLinks();
+            } else {
+                // Just update links for the current node if name hasn't changed
+                links = links.filter(l => !(l.source.id === nodeId && l.type === 'markdown'));
+                const newMarkdownLinks = parseMarkdownLinks(node);
+                links.push(...newMarkdownLinks);
+            }
+        }
+
         // MODIFICATION: Added function to handle clicks on internal [[...]] links
         function addInternalLinkListeners(containerElement) {
             containerElement.addEventListener('click', e => {
@@ -1043,9 +1105,40 @@
                         openMarkdownReaderModal(targetNode);
                     }, 50); 
                 } else {
-                    // Visually indicate the link is broken on click, just in case CSS doesn't cover it.
-                    link.classList.add('internal-link-broken');
-                    link.classList.remove('internal-link');
+                    showConfirm(() => {
+                        const sourceNode = activeNodeReading || activeNodeEditing;
+                        const currentEditModal = document.getElementById('node-modal');
+
+                        // If we were editing a node, save its contents first.
+                        if (activeNodeEditing && currentEditModal) {
+                            saveNodeFromModal(currentEditModal, activeNodeEditing.id);
+                        }
+
+                        const currentReaderModal = document.getElementById('reader-modal');
+                        if (currentReaderModal) closeModal(currentReaderModal);
+                        if (currentEditModal) closeModal(currentEditModal);
+
+                        activeNodeReading = null;
+                        activeNodeEditing = null;
+                        
+                        nodeIdCounter++;
+                        const newNode = {
+                            id: nodeIdCounter,
+                            x: sourceNode ? sourceNode.x + Math.random() * 200 - 100 : width / 2,
+                            y: sourceNode ? sourceNode.y + Math.random() * 200 - 100 : height / 2,
+                            name: nodeName,
+                            content: '',
+                            attachments: []
+                        };
+                        nodes.push(newNode);
+                        
+                        // We must call updateAllMarkdownLinks here so the original link now works
+                        updateAllMarkdownLinks();
+                        update();
+                        
+                        setTimeout(() => openNodeModal(newNode), 100);
+
+                    }, `Node "${nodeName}" does not exist. Create it?`);
                 }
             });
         }
@@ -1054,18 +1147,11 @@
             activeNodeEditing = nodeData;
             const modal = showModal('node-modal', `
                 <div class="bg-ui rounded-xl shadow-xl w-[95vw] max-w-[1600px] h-[90vh] border border-border modal-enter flex flex-col">
-                    <div class="p-6 sm:p-8 flex-shrink-0 flex justify-between items-center border-b border-border">
-                        <h2 class="text-2xl font-bold font-serif">Edit Node</h2>
-                        <button id="modal-download-node" title="Download as Markdown" class="ui-button p-2 rounded-lg">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                        </button>
-                    </div>
-                    <div class="flex flex-col md:flex-row gap-6 p-6 sm:p-8 flex-1 min-h-0">
+                    <div class="flex flex-col md:flex-row gap-6 p-6 sm:px-8 sm:py-6 flex-1 min-h-0">
                         <!-- Left side -->
-                        <div class="w-full md:w-1/2 flex flex-col space-y-4">
-                            <div>
-                                <label for="node-name" class="block text-sm font-medium text-secondary mb-1">Title</label>
-                                <input type="text" id="node-name" class="ui-input block w-full rounded-md text-base p-3">
+                        <div class="w-full md:w-1/2 flex flex-col">
+                            <div class="pb-4 mb-4 border-b border-border">
+                                <input type="text" id="node-name" class="text-2xl sm:text-3xl font-bold w-full bg-transparent focus:outline-none p-0 m-0 border-none focus:ring-0" style="font-family: var(--font-body);" placeholder="What's this idea called?">
                             </div>
                             <div class="flex-shrink-0 border-b border-border">
                                 <nav class="flex space-x-4" id="modal-tabs">
@@ -1075,9 +1161,9 @@
                                 </nav>
                             </div>
                             <!-- Tab Panels -->
-                            <div class="flex-1 min-h-0">
+                            <div class="flex-1 min-h-0 mt-4">
                                 <div id="tab-content" class="h-full flex flex-col">
-                                    <textarea id="node-content" class="ui-textarea block w-full h-full rounded-md text-base leading-relaxed font-serif p-4" style="resize: none;" placeholder="Type content here. Use [[Node Name]] to link to other nodes."></textarea>
+                                    <textarea id="node-content" class="ui-textarea block w-full h-full rounded-md text-lg leading-relaxed p-4" style="font-family: var(--font-body); resize: none;" placeholder="Type content here. Use [[Node Name]] to link to other nodes."></textarea>
                                 </div>
                                 <div id="tab-attachments" class="hidden h-full flex flex-col">
                                     <div class="flex-1 space-y-2 overflow-y-auto mb-3 pr-2" id="attachments-list"></div>
@@ -1097,14 +1183,17 @@
                         </div>
                         <!-- Right side -->
                         <div class="w-full md:w-1/2 flex flex-col min-h-0">
-                            <label class="block text-sm font-medium text-secondary mb-1 flex-shrink-0">Live Preview</label>
-                            <div id="markdown-preview" class="preview-content flex-1 bg-main border border-border rounded-md p-4 overflow-y-auto"></div>
+                            <label class="block text-sm font-medium text-secondary mb-2 flex-shrink-0">Live Preview</label>
+                            <div id="markdown-preview" class="preview-content flex-1 border border-border rounded-md p-4 overflow-y-auto" style="background-color: var(--bg-ui);"></div>
                         </div>
                     </div>
-                    <div class="p-6 sm:p-8 border-t border-border flex justify-between items-center flex-shrink-0">
+                    <div class="p-6 sm:px-8 sm:py-4 border-t border-border flex justify-between items-center flex-shrink-0">
                         <div class="flex items-center gap-4">
                             <button id="modal-delete-node" class="ui-button px-5 py-2.5 font-semibold rounded-lg hover:bg-red-500 hover:text-white hover:border-red-500">Delete Node</button>
                             <button id="modal-read-view" class="ui-button px-5 py-2.5 font-semibold rounded-lg">Read View</button>
+                            <button id="modal-download-node" title="Download as Markdown" class="ui-button p-2.5 rounded-lg">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            </button>
                         </div>
                         <div class="flex space-x-4">
                             <button id="modal-cancel" class="ui-button px-5 py-2.5 font-semibold rounded-lg">Cancel</button>
@@ -1124,6 +1213,7 @@
             function updateLivePreview() { 
                 const content = nodeContentTextarea.value;
                 markdownPreview.innerHTML = mdConverter.makeHtml(content); 
+                Prism.highlightAllUnder(markdownPreview);
             }
 
             function addAttachmentToModalList(url) {
@@ -1200,22 +1290,7 @@
             modal.querySelector('#modal-download-node').onclick = () => { downloadMarkdown(nodeContentTextarea.value, nodeNameInput.value); };
             modal.querySelector('#modal-save').onclick = () => {
                 if (activeNodeEditing) {
-                    const node = nodes.find(n => n.id === activeNodeEditing.id);
-                    if(node) {
-                        const oldName = node.name;
-                        const newName = nodeNameInput.value;
-                        node.name = newName;
-                        node.content = nodeContentTextarea.value;
-                        node.attachments = Array.from(attachmentsList.querySelectorAll('[data-url]')).map(item => item.dataset.url);
-
-                        if (oldName.trim().toLowerCase() !== newName.trim().toLowerCase()) {
-                            updateAllMarkdownLinks();
-                        } else {
-                            links = links.filter(l => !(l.source.id === activeNodeEditing.id && l.type === 'markdown'));
-                            const newMarkdownLinks = parseMarkdownLinks(node);
-                            links.push(...newMarkdownLinks);
-                        }
-                    }
+                    saveNodeFromModal(modal, activeNodeEditing.id);
                 }
                 closeModal(modal);
                 activeNodeEditing = null;
@@ -1279,34 +1354,36 @@
 
             const modal = showModal('reader-modal', `
                 <div class="bg-ui rounded-xl shadow-xl w-[95vw] max-w-screen-2xl h-[90vh] border border-border modal-enter flex flex-col">
-                    <div class="p-4 sm:p-6 flex-shrink-0 flex justify-between items-center border-b border-border">
-                        <h2 class="text-2xl font-bold font-serif truncate pr-4">${nodeData.name}</h2>
+                    <div class="px-4 sm:px-6 py-4 flex-shrink-0 flex justify-between items-center border-b border-border">
+                        <h2 class="text-2xl font-bold truncate pr-4" style="font-family: var(--font-body);">${nodeData.name}</h2>
                         <button id="reader-download-btn" title="Download as Markdown" class="ui-button p-2 rounded-lg flex-shrink-0">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                         </button>
                     </div>
                     <div class="flex-1 min-h-0 flex flex-col">
                          <div class="px-4 sm:px-6 pt-2 border-b border-border">
-                            <nav id="reader-tabs" class="flex -mb-px space-x-2">${tabsHTML}</nav>
-                        </div>
-                        <div class="flex-1 min-h-0 relative bg-main">
-                            <div id="reader-tab-markdown" class="reader-tab-panel absolute inset-0 overflow-y-auto p-6 sm:p-8">
-                                <div class="preview-content text-lg max-w-5xl mx-auto">
-                                    ${mdConverter.makeHtml(nodeData.content || '<em>No content available.</em>')}
-                                </div>
-                            </div>
-                            ${imagesPanelHTML}
-                            ${otherPanelHTML}
-                        </div>
+                             <nav id="reader-tabs" class="flex -mb-px space-x-2">${tabsHTML}</nav>
+                         </div>
+                         <div class="flex-1 min-h-0 relative" style="background-color: var(--bg-ui);">
+                             <div id="reader-tab-markdown" class="reader-tab-panel absolute inset-0 overflow-y-auto p-6 sm:p-8">
+                                 <div class="preview-content text-lg max-w-5xl mx-auto">
+                                     ${mdConverter.makeHtml(nodeData.content || '<em>No content available.</em>')}
+                                 </div>
+                             </div>
+                             ${imagesPanelHTML}
+                             ${otherPanelHTML}
+                         </div>
                     </div>
-                    <div class="p-6 sm:p-8 border-t border-border flex justify-end items-center flex-shrink-0 space-x-4">
+                    <div class="p-6 sm:px-8 sm:py-4 border-t border-border flex justify-end items-center flex-shrink-0 space-x-4">
                         <button id="reader-edit-btn" class="ui-button px-5 py-2.5 font-semibold rounded-lg">Edit Node</button>
                         <button id="reader-close-btn" class="ui-button-accent px-5 py-2.5 font-semibold rounded-lg">Close</button>
                     </div>
                 </div>`);
             
             // MODIFICATION: Add listener for internal links in the reader content
-            addInternalLinkListeners(modal.querySelector('.preview-content'));
+            const previewContent = modal.querySelector('.preview-content');
+            addInternalLinkListeners(previewContent);
+            Prism.highlightAllUnder(previewContent);
             
              // --- Tab Logic ---
             const tabsNav = modal.querySelector('#reader-tabs');
@@ -1377,7 +1454,7 @@
                     <ul class="space-y-4 text-secondary text-base mb-8">
                         <li class="flex items-start gap-3"><span class="text-accent mt-1 text-lg leading-none">▸</span><p><strong class="text-primary font-semibold">Add a Node:</strong> Simply click on any empty area on the canvas.</p></li>
                         <li class="flex items-start gap-3"><span class="text-accent mt-1 text-lg leading-none">▸</span><p><strong class="text-primary font-semibold">Create a Manual Link:</strong> Click one node, then click another to connect (or disconnect) them.</p></li>
-                        <li class="flex items-start gap-3"><span class="text-accent mt-1 text-lg leading-none">▸</span><p><strong class="text-primary font-semibold">Create a Text Link:</strong> Inside a node's editor, type `+"`[[Target Node Name]]`"+` to automatically link to another node by its title.</p></li>
+                        <li class="flex items-start gap-3"><span class="text-accent mt-1 text-lg leading-none">▸</span><p><strong class="text-primary font-semibold">Create a Text Link:</strong> Inside a node's editor, type \`[[Target Node Name]]\` to automatically link to another node by its title.</p></li>
                          <li class="flex items-start gap-3"><span class="text-accent mt-1 text-lg leading-none">▸</span><p><strong class="text-primary font-semibold">Edit & View:</strong> Hover over any node to reveal action buttons for editing, adding linked nodes, and more.</p></li>
                         <li class="flex items-start gap-3"><span class="text-accent mt-1 text-lg leading-none">▸</span><p><strong class="text-primary font-semibold">Pan & Zoom:</strong> Drag the canvas background to move your view, and use your scroll wheel to zoom in and out.</p></li>
                     </ul>
@@ -1414,7 +1491,7 @@
             
             const modalWrapper = document.createElement('div');
             modalWrapper.id = 'image-carousel-modal';
-            modalWrapper.className = 'fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 modal-enter';
+            modalWrapper.className = 'fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black modal-enter';
             modalWrapper.innerHTML = modalContent;
             modalContainer.appendChild(modalWrapper);
             
@@ -1468,22 +1545,15 @@
                 case 'force':
                     simulation.force("center", d3.forceCenter(width / 2, height / 2)).alpha(1).restart();
                     break;
-                case 'radial': case 'hierarchical':
+                case 'hierarchical':
                     if (componentNodes.length === 0 || !currentRootId) break;
                     const rootNodeForHierarchy = componentNodes.find(n => n.id === currentRootId);
                     const hierarchyData = createHierarchy(rootNodeForHierarchy, componentNodes, links);
                     if (!hierarchyData) break;
                     const root = d3.hierarchy(hierarchyData);
-                    if (currentLayout === 'hierarchical') {
-                        const treeLayout = d3.tree().nodeSize([120, 220]);
-                        treeLayout(root);
-                        root.descendants().forEach(d => { const node = nodes.find(n => n.id === d.data.id); if(node){ node.x = d.x + width / 2; node.y = d.y + height * 0.1; } });
-                    } else { // radial
-                        const radius = Math.min(width, height) / 2.5;
-                        const treeLayout = d3.tree().size([2 * Math.PI, radius]);
-                        treeLayout(root);
-                        root.descendants().forEach(d => { const node = nodes.find(n => n.id === d.data.id); if(node){ node.x = width / 2 + d.y * Math.cos(d.x - Math.PI / 2); node.y = height / 2 + d.y * Math.sin(d.x - Math.PI / 2); } });
-                    }
+                    const treeLayout = d3.tree().nodeSize([120, 220]);
+                    treeLayout(root);
+                    root.descendants().forEach(d => { const node = nodes.find(n => n.id === d.data.id); if(node){ node.x = d.x + width / 2; node.y = d.y + height * 0.1; } });
                     ticked();
                     break;
                 case 'circular':
@@ -1545,5 +1615,7 @@
             return { componentNodes: Array.from(componentNodes.values()) }; 
         }
     </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js" xintegrity="sha512-9khQRAUBomBC5/3mEhmGTBtm3rVLjdBOAoOKJBJxrrKaxtN0Uo+IgrT5s7WOLpy35CLrqS/jHyeI/U3C3blU5A==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js" xintegrity="sha512-S_2_LMwU2SjnoF8pNtH/K2DEsPBOsPq7vLqfU+eBfDdQvjTslmxlns9R/2L5g8/hL2QxV/T0J2WXzSAfU/g+2g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </body>
 </html>
