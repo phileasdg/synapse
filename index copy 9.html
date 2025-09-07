@@ -232,7 +232,7 @@
     <!-- Header and Controls -->
     <header class="p-3 bg-header border-b border-border shadow-sm z-30 transition-colors">
         <div class="container mx-auto flex flex-wrap justify-between items-center gap-y-2 gap-x-4">
-            <!-- Left: Notework Management -->
+              <!-- Left: Notework Management -->
             <div class="flex items-center gap-3">
                 <h1 class="text-xl font-bold tracking-tight" style="font-family: var(--font-ui);">Synapse</h1>
                 <div class="h-6 w-px bg-border hidden sm:block"></div>
@@ -245,7 +245,7 @@
                 </div>
             </div>
             
-            <!-- Right: Tools -->
+              <!-- Right: Tools -->
             <div class="flex items-center gap-3">
                 <div class="relative">
                     <input type="search" id="search-input" placeholder="Search..." class="ui-input w-36 sm:w-48 text-sm pl-8 pr-3 py-1.5 rounded-md focus:outline-none transition-all">
@@ -256,7 +256,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
                 </button>
                 <button id="center-view-btn" title="Center View" class="ui-button p-2 rounded-full">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                 </button>
                 <button id="theme-cycler" class="ui-button p-2 rounded-full flex items-center justify-center">
                     <div id="theme-icon-warm" class="text-xl leading-none">🕯️</div>
@@ -1269,71 +1269,19 @@
 
             function populateConnectionsList(nodeId) {
                 connectionsList.innerHTML = '';
-                
-                // Get manual links from the global state
-                const manualLinks = links.filter(l => l.type === 'manual' && (l.source.id === nodeId || l.target.id === nodeId));
-
-                // Parse markdown links directly from the current textarea content
-                const tempNodeForParsing = { ...nodeData, content: nodeContentTextarea.value };
-                const markdownLinks = parseMarkdownLinks(tempNodeForParsing);
-
-                const allConnectedLinks = [...manualLinks, ...markdownLinks];
-                
-                // Sort to group manual links first
-                allConnectedLinks.sort((a, b) => {
-                    if (a.type === 'manual' && b.type !== 'manual') return -1;
-                    if (a.type !== 'manual' && b.type === 'manual') return 1;
-                    return 0;
-                });
-
-                if (allConnectedLinks.length === 0) {
-                    connectionsList.innerHTML = `<span class="text-sm italic text-secondary">No links found. Add manual links below or text links via [[...]] syntax.</span>`;
-                    return;
-                }
-
-                allConnectedLinks.forEach(link => {
+                const connectedLinks = links.filter(l => l.type === 'manual' && (l.source.id === nodeId || l.target.id === nodeId));
+                if (connectedLinks.length === 0) { connectionsList.innerHTML = `<span class="text-sm italic text-secondary">No manual links. Text links are managed via [[...]] syntax.</span>`; return; }
+                connectedLinks.forEach(link => {
                     const otherNode = link.source.id === nodeId ? link.target : link.source;
-                    if (!otherNode) return; 
-
+                    const isEditingNodeSource = link.source.id === nodeId;
+                    const direction = link.direction || 'to';
                     const item = document.createElement('div');
                     item.className = 'flex items-center justify-between bg-ui-hover p-2 rounded-md text-sm min-w-0';
-
-                    if (link.type === 'manual') {
-                        const isEditingNodeSource = link.source.id === nodeId;
-                        const direction = link.direction || 'to';
-                        const toThisDir = isEditingNodeSource ? 'from' : 'to';
-                        const fromThisDir = isEditingNodeSource ? 'to' : 'from';
-                        item.innerHTML = `
-                            <span class="truncate" title="${otherNode.name}">${otherNode.name}</span>
-                            <div class="flex items-center gap-1">
-                                <button title="Direction: To this node" data-dir="${toThisDir}" class="ui-button text-sm p-1 border-none ${direction === toThisDir ? 'active': ''}">←</button>
-                                <button title="Direction: Bidirectional" data-dir="both" class="ui-button text-sm p-1 border-none ${direction === 'both' ? 'active': ''}">↔</button>
-                                <button title="Direction: From this node" data-dir="${fromThisDir}" class="ui-button text-sm p-1 border-none ${direction === fromThisDir ? 'active': ''}">→</button>
-                                <button class="remove-btn text-red-500 hover:text-red-700 font-bold ml-2 text-xl leading-none">&times;</button>
-                            </div>`;
-                        item.querySelectorAll('button[data-dir]').forEach(btn => {
-                            btn.onclick = () => { 
-                                link.direction = btn.dataset.dir; 
-                                update(); 
-                                populateConnectionsList(nodeId); 
-                            };
-                        });
-                        item.querySelector('.remove-btn').onclick = () => { 
-                            links = links.filter(l => l !== link); 
-                            update(); 
-                            populateConnectionsList(nodeId); 
-                            populateAddConnectionSelect(nodeId); 
-                        };
-                    } else if (link.type === 'markdown') {
-                        item.innerHTML = `
-                            <span class="truncate" title="${otherNode.name}">${otherNode.name}</span>
-                            <div class="flex items-center gap-2 text-xs text-secondary italic">
-                                <span>(Text Link)</span>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="flex-shrink-0"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"></path></svg>
-                            </div>
-                        `;
-                        item.classList.add('opacity-75');
-                    }
+                    const toThisDir = isEditingNodeSource ? 'from' : 'to';
+                    const fromThisDir = isEditingNodeSource ? 'to' : 'from';
+                    item.innerHTML = `<span class="truncate" title="${otherNode.name}">${otherNode.name}</span><div class="flex items-center gap-1"><button title="Direction: To this node" data-dir="${toThisDir}" class="ui-button text-sm p-1 border-none ${direction === toThisDir ? 'active': ''}">←</button><button title="Direction: Bidirectional" data-dir="both" class="ui-button text-sm p-1 border-none ${direction === 'both' ? 'active': ''}">↔</button><button title="Direction: From this node" data-dir="${fromThisDir}" class="ui-button text-sm p-1 border-none ${direction === fromThisDir ? 'active': ''}">→</button><button class="remove-btn text-red-500 hover:text-red-700 font-bold ml-2">&times;</button></div>`;
+                    item.querySelectorAll('.ui-button').forEach(btn => { btn.onclick = () => { link.direction = btn.dataset.dir; update(); populateConnectionsList(nodeId); }; });
+                    item.querySelector('.remove-btn').onclick = () => { links = links.filter(l => l !== link); update(); populateConnectionsList(nodeId); populateAddConnectionSelect(nodeId); };
                     connectionsList.appendChild(item);
                 });
             }
@@ -1361,10 +1309,7 @@
                 activeNodeEditing = null;
                 openMarkdownReaderModal(nodeData);
             };
-            nodeContentTextarea.addEventListener('input', () => {
-                updateLivePreview();
-                populateConnectionsList(nodeData.id);
-            });
+            nodeContentTextarea.addEventListener('input', updateLivePreview);
             modal.querySelector('#add-attachment-btn').onclick = () => { if (attachmentInput.value) { try { new URL(attachmentInput.value); addAttachmentToModalList(attachmentInput.value); attachmentInput.value = ''; } catch(e) { console.error("Invalid URL"); } } };
             attachmentInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); modal.querySelector('#add-attachment-btn').click(); }});
             modal.querySelector('#add-connection-btn').onclick = () => { const targetNodeId = parseInt(addConnectionSelect.value); if (!targetNodeId || !activeNodeEditing) return; links.push({ source: activeNodeEditing, target: nodes.find(n=>n.id === targetNodeId), direction: 'to', type: 'manual' }); update(); populateConnectionsList(activeNodeEditing.id); populateAddConnectionSelect(activeNodeEditing.id); };
