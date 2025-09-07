@@ -45,6 +45,7 @@
             --border: #DEE2E6;
             --border-focus: #3498db;
             --shadow-color: #C6CBD0; 
+            /* MODIFICATION: Made backdrop opaque */
             --bg-backdrop: var(--bg-main);
         }
 
@@ -62,6 +63,7 @@
             --border: #444446;
             --border-focus: #3498db;
             --shadow-color: #222223; 
+            /* MODIFICATION: Made backdrop opaque */
             --bg-backdrop: var(--bg-main);
         }
         
@@ -79,6 +81,7 @@
              --border: #EAE6DD;
              --border-focus: #C76A36;
              --shadow-color: #D3CEC4; 
+             /* MODIFICATION: Made backdrop opaque */
              --bg-backdrop: var(--bg-main);
         }
 
@@ -112,15 +115,17 @@
             50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--border-focus) 90%, var(--bg-ui)); }
         }
         .modal-enter { animation: fadeIn 0.2s ease-out forwards; }
+        /* MODIFICATION: Removed transparency from search fade */
         .search-fade { filter: grayscale(100%); transition: filter 0.3s; }
 
         /* SVG, Nodes, Links */
         .node-shape { stroke-width: 1px; stroke: var(--border); fill: var(--bg-ui); transition: all 0.2s ease-in-out; }
-        .node:hover .node-shape, .node.selected .node-shape { stroke: var(--border-focus); stroke-width: 1.5px; }
+        .node:hover .node-shape { stroke: var(--border-focus); stroke-width: 1.5px; }
         .node.pending-connection .node-shape { animation: pulse-glow 2s infinite ease-in-out; stroke: var(--border-focus) !important; stroke-width: 1.5px; }
         .node-shape.searched-match { stroke: var(--border-focus) !important; stroke-width: 2.5px; }
         .node-shape-root { stroke: #22c55e !important; stroke-width: 2.5px; }
 
+        /* MODIFICATION: Replaced opacity with color mixing for a solid color */
         .link { 
             stroke: color-mix(in srgb, var(--text-secondary) 80%, var(--bg-main)); 
             stroke-width: 1.5px; 
@@ -141,14 +146,7 @@
         .node-attachments-container { color: var(--text-secondary); }
 
         .node-action-button { cursor: pointer; transition: all 0.2s ease-in-out; border-radius: 50%; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; user-select: none; border: 1px solid var(--border); background-color: var(--bg-ui); color: var(--text-secondary); box-shadow: 0 2px 4px -1px var(--shadow-color); opacity: 0; pointer-events: none; transform: scale(0.8); }
-        
-        /* FIX: Show action buttons on hover (desktop) OR when selected (touch) */
-        .node:hover .node-action-button, 
-        .node.selected .node-action-button,
-        .node.pending-connection .node-action-button { 
-            opacity: 1; pointer-events: auto; transform: scale(1); 
-        }
-
+        .node:hover .node-action-button, .node.pending-connection .node-action-button { opacity: 1; pointer-events: auto; transform: scale(1); }
         .node-action-button:hover { transform: scale(1.15); }
         .node-action-button.add:hover, .node-action-button.edit:hover { background-color: var(--bg-accent); color: var(--text-accent); }
         .node-action-button.delete:hover { background-color: #ef4444; color: white; }
@@ -160,12 +158,7 @@
             color: var(--text-secondary); box-shadow: 0 4px 6px -1px var(--shadow-color);
             opacity: 0; pointer-events: none; transform: scale(0.8); 
         }
-
-        /* FIX: Show preview button on hover (desktop) OR when selected (touch) */
-        .node:hover .node-preview-button,
-        .node.selected .node-preview-button { 
-            opacity: 1; pointer-events: auto; transform: scale(1); 
-        }
+        .node:hover .node-preview-button { opacity: 1; pointer-events: auto; transform: scale(1); }
         .node-preview-button:hover { transform: scale(1.1); background-color: var(--bg-accent); color: var(--text-accent); }
 
 
@@ -174,9 +167,11 @@
         .preview-content h1, .preview-content h2, .preview-content h3 { font-family: var(--font-ui); font-weight: 700; color: var(--text-primary); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 0.75rem;}
         .preview-content h1 { font-size: 1.75rem; } .preview-content h2 { font-size: 1.5rem; } .preview-content h3 { font-size: 1.25rem; }
         .preview-content a { color: var(--bg-accent); text-decoration: underline; text-underline-offset: 2px;}
+        /* FIX: Ensure anchor tags styled as buttons have the correct text color */
         .preview-content a.ui-button { color: var(--text-secondary); text-decoration: none; }
         .preview-content a.ui-button:hover { color: var(--text-primary); }
         .preview-content a.ui-button-accent { color: var(--text-accent); text-decoration: none; }
+        /* MODIFICATION: Style inline code to be more distinct */
         .preview-content code {
             background-color: color-mix(in srgb, var(--text-primary) 5%, var(--bg-ui));
             padding: 0.2rem 0.4rem;
@@ -185,12 +180,14 @@
             font-size: 0.9em;
             border: 1px solid var(--border);
         }
+        /* MODIFICATION: Let Prism.js theme handle styling for pre tags */
         .preview-content pre { 
             overflow-x: auto; 
             border-radius: 8px; /* Ensure pre tags have rounded corners */
         }
         .preview-content blockquote { border-left: 3px solid var(--border-focus); padding-left: 1rem; color: var(--text-secondary); margin: 1rem 0; }
         .preview-content p { margin-bottom: 1rem; }
+        /* MODIFICATION: Fix list item display */
         .preview-content ul, .preview-content ol { padding-left: 2rem; margin-bottom: 1rem; }
         .preview-content li { margin-bottom: 0.5rem; }
         .preview-content ul { list-style-type: disc; }
@@ -199,6 +196,7 @@
         .preview-content ul ul ul, .preview-content ol ul ul { list-style-type: square; }
         .preview-content img { max-width: 100%; border-radius: 0.5rem; margin-top: 1rem; margin-bottom: 1rem; }
 
+        /* MODIFICATION: Styles for internal node links in Markdown previews */
         .preview-content .internal-link {
             color: var(--text-secondary);
             text-decoration: none;
@@ -225,7 +223,7 @@
         
         #layout-panel, #edge-edit-panel {
             transform: translateZ(0); /* Promotes to a new layer for z-index consistency */
-            background-color: var(--bg-ui);
+            background-color: var(--bg-ui); /* MODIFICATION: Ensure panels are opaque */
         }
     </style>
 </head>
@@ -272,7 +270,7 @@
         </div>
     </header>
 
-    <!-- Layout Options Panel (Initially Hidden, layout adjusted) -->
+    <!-- FIX: Layout Options Panel (Initially Hidden, layout adjusted) -->
     <div id="layout-panel" class="hidden absolute top-20 left-4 bg-ui p-4 rounded-xl shadow-2xl border border-border z-40 max-w-xs w-64 modal-enter">
         <div class="space-y-4">
             <div>
@@ -283,8 +281,7 @@
                     <button id="layout-circular" class="ui-button px-3 py-2 text-sm rounded-md w-full">Circular</button>
                     <button id="layout-grid" class="ui-button px-3 py-2 text-sm rounded-md w-full">Grid</button>
                 </div>
-                <!-- FIX: Added ID for dynamic text update -->
-                <p id="tree-layout-helper" class="text-xs text-secondary mt-2">For Tree layout, right-click a node to set it as root.</p>
+                <p class="text-xs text-secondary mt-2">For Tree layout, right-click a node to set it as root.</p>
             </div>
             <hr class="border-border">
             <div>
@@ -326,7 +323,6 @@
         // ===================================
         // INITIALIZATION & GLOBAL STATE
         // ===================================
-        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
         const svg = d3.select("#network-canvas");
         let width = svg.node().getBoundingClientRect().width;
         let height = svg.node().getBoundingClientRect().height;
@@ -336,7 +332,6 @@
         let links = [];
         let nodeIdCounter = 0;
         let selectedNodeForEdge = null;
-        let selectedNodeId = null; // FIX: For tracking tapped node on mobile
         let selectedLink = null;
         let currentLayout = 'force';
         let currentRootId = null;
@@ -363,11 +358,14 @@
         const katexExtension = () => [{ type: 'output', filter: function (html) { if (typeof katex === 'undefined') { console.warn('KaTeX not loaded.'); return html; } const parts = html.split(/(<code[\s\S]*?>[\s\S]*?<\/code>|<pre[\s\S]*?>[\s\S]*?<\/pre>)/); const processedParts = parts.map((part, index) => { if (index % 2 === 1) { return part; } part = part.replace(/<p>\$\$([\s\S]+?)\$\$<\/p>/g, (match, content) => { try { return katex.renderToString(content.trim(), { displayMode: true, throwOnError: false, trust: true }); } catch (e) { return `<span class="text-red-500">LaTeX Error: ${e.message}</span>`; } }); part = part.replace(/(?<!\\)\$([^\$\n]+?)\$/g, (match, content) => { try { return katex.renderToString(content.trim(), { displayMode: false, throwOnError: false, trust: true }); } catch (e) { return `<span class="text-red-500">LaTeX Error: ${e.message}</span>`; } }); return part; }); return processedParts.join(''); } }]; 
         showdown.extension('katex', katexExtension);
 
+        // MODIFICATION: Add showdown extension for [[Internal Links]]
         showdown.extension('synapseLinks', () => [{
             type: 'lang',
             regex: /\[\[(.*?)\]\]/g,
             replace: (match, nodeName) => {
                 const trimmedNodeName = nodeName.trim();
+                // We don't check for node existence here because the nodes array might not be up-to-date.
+                // The check will happen in the click handler. We just create the link structure.
                 return `<a href="#" class="internal-link" title="Open node: ${trimmedNodeName}">${trimmedNodeName}</a>`;
             }
         }]);
@@ -431,8 +429,7 @@
             svg.style('cursor', selectedNodeForEdge ? 'crosshair' : 'grab');
             
             if (selectedNodeForEdge) {
-                const message = isTouchDevice ? 'Tap another node to create/remove a link.' : 'Click another node to create/remove a link, or press ESC to cancel.';
-                showActionHelper(message);
+                showActionHelper('Click another node to create/remove a link, or press ESC to cancel.');
             } else {
                 hideActionHelper();
             }
@@ -440,10 +437,6 @@
         
         function cancelEdgeSelection() {
             selectedNodeForEdge = null;
-            if (selectedNodeId) {
-                node.classed('selected', false);
-                selectedNodeId = null;
-            }
             updateConnectionStateIndicator();
         }
         
@@ -507,23 +500,6 @@
                 .call(drag(simulation))
                 .on("click", handleNodeClick)
                 .on("contextmenu", handleNodeRightClick);
-
-            // FIX: Add long-press event for touch devices
-            if (isTouchDevice) {
-                let touchTimer;
-                nodeEnter.on('touchstart', function(event, d) {
-                    touchTimer = setTimeout(() => {
-                        handleNodeRightClick(event, d);
-                        if ('vibrate' in navigator) navigator.vibrate(50);
-                        // Flag to prevent click event from firing after a long press
-                        d3.select(this).property('__longpress__', true);
-                    }, 500);
-                }).on('touchend', function() {
-                    clearTimeout(touchTimer);
-                }).on('touchmove', function() {
-                    clearTimeout(touchTimer);
-                });
-            }
             
             node = nodeEnter.merge(node);
             node.each(function(d) { renderNodeContent(d3.select(this), d); });
@@ -541,21 +517,18 @@
             handleSearch();
         }
 
-        // FIX: Reworked click logic for mobile selection and desktop linking
         function handleNodeClick(event, d) {
-            const thisNodeElement = d3.select(event.currentTarget);
-            if (thisNodeElement.property('__longpress__')) {
-                thisNodeElement.property('__longpress__', false);
-                return; // It was a long press, not a click
-            }
-
             event.stopPropagation();
             hideEdgeEditPanel();
+            if (event.altKey) {
+                deleteNode(d.id);
+                return;
+            }
 
-            // Case 1: We are already trying to connect a node.
-            if (selectedNodeForEdge) {
+            if (!selectedNodeForEdge) {
+                selectedNodeForEdge = d;
+            } else {
                 if (selectedNodeForEdge.id !== d.id) {
-                    // Connect/disconnect logic
                     const existingLinkIndex = links.findIndex(l => (l.type === 'manual' && ((l.source.id === selectedNodeForEdge.id && l.target.id === d.id) || (l.source.id === d.id && l.target.id === selectedNodeForEdge.id))));
                     if (existingLinkIndex > -1) {
                         links.splice(existingLinkIndex, 1);
@@ -563,32 +536,11 @@
                         links.push({ source: selectedNodeForEdge, target: d, direction: 'to', type: 'manual' });
                     }
                 }
-                // Exit link mode regardless
-                cancelEdgeSelection();
+                selectedNodeForEdge = null;
                 update();
-                if (['hierarchical'].includes(currentLayout)) applyCurrentLayout();
-                return;
+                if(['hierarchical'].includes(currentLayout)) applyCurrentLayout();
             }
-
-            // Case 2: We are NOT in link mode.
-            if (isTouchDevice) {
-                if (selectedNodeId === d.id) {
-                    // On touch, a second tap on the selected node initiates linking
-                    selectedNodeId = null; // deselect visually
-                    node.classed('selected', false);
-                    selectedNodeForEdge = d;
-                    updateConnectionStateIndicator();
-                } else {
-                    // On touch, a first tap or tap on a different node just selects it.
-                    node.classed('selected', false);
-                    thisNodeElement.classed('selected', true);
-                    selectedNodeId = d.id;
-                }
-            } else {
-                // On desktop, any first click initiates linking (original behavior).
-                selectedNodeForEdge = d;
-                updateConnectionStateIndicator();
-            }
+            updateConnectionStateIndicator();
         }
         
         function handleNodeRightClick(event, d) { 
@@ -650,7 +602,7 @@
         }
 
         // ===================================
-        // NODE & LINK RENDERING
+        // NODE & LINK RENDERING (MODIFIED)
         // ===================================
         function renderNodeContent(group, d) {
             group.selectAll("*").remove();
@@ -661,8 +613,10 @@
             const hasAttachments = d.attachments && d.attachments.length > 0;
             const hasContent = hasTextContent || hasAttachments;
 
+            // Use the single source of truth for node dimensions
             const { width: nodeWidth, height: nodeHeight, isRect } = getNodeDimensions(d);
 
+            // Append the main shape (rect or circle)
             if (isRect) {
                 group.append("rect").attr("width", nodeWidth).attr("height", nodeHeight)
                     .attr("x", -nodeWidth / 2).attr("y", -nodeHeight / 2).attr("rx", 8)
@@ -673,6 +627,7 @@
 
             let currentY = -nodeHeight / 2;
 
+            // Render image if present
             if (hasImage) {
                 const clipId = `clip-${d.id}`;
                 group.append('clipPath').attr('id', clipId)
@@ -688,34 +643,39 @@
                 currentY += 80;
             }
 
+            // Render title and text content
             if (hasContent || !isRect) {
                 const title = d.name.length > 22 ? d.name.substring(0, 20) + '...' : d.name;
                 const titleElem = group.append("text").attr("class", "node-title select-none").text(title);
 
                 if (isRect) {
+                    // Position title for rectangle nodes
                     titleElem.attr("text-anchor", "start").attr("x", -nodeWidth / 2 + 12).attr("y", currentY + 20);
-                    const titleAreaHeight = 35;
+                    const titleAreaHeight = 35; // The vertical space taken by the title and its padding
                     currentY += titleAreaHeight;
 
                     if (hasTextContent) {
+                        // Calculate height for markdown preview dynamically
                         const contentAreaHeight = nodeHeight - (hasImage ? 80 : 0);
-                        const attachmentsAreaHeight = hasAttachments ? 28 : 0;
+                        const attachmentsAreaHeight = hasAttachments ? 28 : 0; // Space for attachments bar at the bottom
                         const textPreviewHeight = contentAreaHeight - titleAreaHeight - attachmentsAreaHeight;
 
                         const fo = group.append('foreignObject')
-                            .attr('x', -nodeWidth / 2 + 12).attr('y', currentY - 10)
+                            .attr('x', -nodeWidth / 2 + 12).attr('y', currentY - 10) // Position it right under the title
                             .attr('width', nodeWidth - 24).attr('height', Math.max(20, textPreviewHeight))
                         fo.html(`<div class="node-markdown-render">${mdConverter.makeHtml(d.content)}</div>`);
                     }
                 } else {
+                    // Position title for circle nodes
                     titleElem.attr("text-anchor", "middle").attr("x", 0).attr("y", 5);
                 }
             }
 
+            // Render attachments count if present
             if (hasAttachments) {
                 const attachmentsFO = group.append('foreignObject')
                     .attr('x', -nodeWidth / 2 + 10)
-                    .attr('y', nodeHeight / 2 - 26)
+                    .attr('y', nodeHeight / 2 - 26) // Positioned at the bottom of the node
                     .attr('width', 50)
                     .attr('height', 22);
 
@@ -723,6 +683,7 @@
                 attachmentsFO.html(attachmentHTML);
             }
 
+            // --- Action buttons ---
             const btnPos = { x: isRect ? nodeWidth/2 + 8 : 35, y: isRect ? 0 : 0 };
             group.append('foreignObject').attr('x', btnPos.x - 11).attr('y', btnPos.y - 38).attr('width', 22).attr('height', 22)
                 .append('xhtml:div').attr('class', 'node-action-button add').html('＋').on('click', (e, d) => { e.stopPropagation(); addLinkedNode(d); });
@@ -793,7 +754,7 @@
         }
 
         // ===================================
-        // HELPER FUNCTIONS
+        // HELPER FUNCTIONS (MODIFIED)
         // ===================================
         function isImageUrl(url) { try { if(!url) return false; const urlObj = new URL(url, window.location.href); return /\.(jpg|jpeg|png|gif|svg|webp)$/i.test(urlObj.pathname); } catch(e){ return false; } }
         
@@ -813,9 +774,9 @@
                 nodeHeight += 80;
             }
             if (hasContent) {
-                nodeHeight += 100;
+                nodeHeight += 100; // Increased height for content area
             }
-            nodeHeight = Math.max(80, nodeHeight);
+            nodeHeight = Math.max(80, nodeHeight); // Minimum height for a rect node
 
             return { width: nodeWidth, height: nodeHeight, isRect: true };
         }
@@ -1018,8 +979,7 @@
                 Object.values(layoutButtons).forEach(btn => btn.classList.remove('active')); 
                 layoutButtons[layoutId].classList.add('active'); 
                 if (['hierarchical'].includes(layoutId)) { 
-                    const message = isTouchDevice ? "Long-press a node to set it as the layout root." : "Right-click a node to set it as the layout root.";
-                    showActionHelper(message); 
+                    showActionHelper("Right-click a node to set it as the layout root."); 
                 } else if(selectedNodeForEdge) { 
                     /* Keep showing connection helper */ 
                 } else { 
@@ -1031,27 +991,7 @@
                 applyCurrentLayout(); 
             }); 
         });
-        
-        // FIX: Reworked background click logic to handle deselection
-        svg.on('click', (event) => {
-            if (event.target.isEqualNode(svg.node())) {
-                hideEdgeEditPanel();
-                if (selectedNodeForEdge) {
-                    cancelEdgeSelection();
-                } else if (selectedNodeId) {
-                    node.classed('selected', false);
-                    selectedNodeId = null;
-                } else {
-                    const [x, y] = d3.pointer(event, container.node());
-                    nodeIdCounter++;
-                    const newNode = {id: nodeIdCounter, x, y, name: `Node ${nodeIdCounter}`, content: '', attachments: []};
-                    nodes.push(newNode);
-                    if (currentRootId === null) currentRootId = newNode.id;
-                    update();
-                }
-            }
-        });
-
+        svg.on('click', (event) => { if (event.target.isEqualNode(svg.node())) { hideEdgeEditPanel(); if (selectedNodeForEdge) { cancelEdgeSelection(); } else { const [x, y] = d3.pointer(event, container.node()); nodeIdCounter++; const newNode = {id: nodeIdCounter, x, y, name: `Node ${nodeIdCounter}`, content: '', attachments: []}; nodes.push(newNode); if (currentRootId === null) currentRootId = newNode.id; update(); } } });
         document.getElementById('about-toggle').addEventListener('click', () => openAboutModal());
         document.getElementById('layout-panel-toggle').addEventListener('click', () => document.getElementById('layout-panel').classList.toggle('hidden'));
 
@@ -1061,11 +1001,6 @@
             applyTheme(savedTheme);
             loadFromLocal();
             
-            // FIX: Update helper text based on device type
-            document.getElementById('tree-layout-helper').textContent = isTouchDevice 
-                ? "For Tree layout, long-press a node to set it as root."
-                : "For Tree layout, right-click a node to set it as root.";
-
             if (nodes.length === 0) {
                 createDefaultNetwork();
             }
@@ -1163,6 +1098,7 @@
             }
         }
 
+        // MODIFICATION: Added function to handle clicks on internal [[...]] links
         function addInternalLinkListeners(containerElement) {
             containerElement.addEventListener('click', e => {
                 const link = e.target.closest('.internal-link');
@@ -1233,6 +1169,7 @@
             });
         }
 
+        // FIX: The markdown/node preview modals need to make even better use of space. The fact that the title in the edit node modal is an input field needs to be more obvious.
         function openNodeModal(nodeData) {
             activeNodeEditing = nodeData;
             const modal = showModal('node-modal', `
@@ -1416,6 +1353,7 @@
             populateAddConnectionSelect(nodeData.id);
             updateLivePreview();
             
+            // MODIFICATION: Add listener for internal links in the preview pane
             addInternalLinkListeners(markdownPreview);
 
             modal.querySelector('#modal-read-view').onclick = () => {
@@ -1456,12 +1394,14 @@
             tabsContainer.querySelector('button[data-tab="content"]').click();
         }
 
+        // FIX: The markdown/node preview modals need to make even better use of space
         function openMarkdownReaderModal(nodeData) {
             activeNodeReading = nodeData;
             const allAttachments = nodeData.attachments || [];
             const imageAttachments = allAttachments.filter(isImageUrl);
             const otherAttachments = allAttachments.filter(url => !isImageUrl(url));
             
+            // --- Build Tabs ---
             let tabsHTML = '<button data-tab="markdown" class="ui-button px-3 py-1.5 text-sm rounded-md active">Markdown</button>';
             if (imageAttachments.length > 0) {
                 tabsHTML += `<button data-tab="images" class="ui-button px-3 py-1.5 text-sm rounded-md">Images (${imageAttachments.length})</button>`;
@@ -1470,6 +1410,7 @@
                 tabsHTML += `<button data-tab="other" class="ui-button px-3 py-1.5 text-sm rounded-md">Files (${otherAttachments.length})</button>`;
             }
 
+            // --- Build Tab Panels ---
             const imagesPanelHTML = imageAttachments.length > 0 ? `
                 <div id="reader-tab-images" class="reader-tab-panel hidden absolute inset-0 overflow-y-auto p-4">
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -1521,6 +1462,7 @@
                     </div>
                 </div>`);
             
+            // MODIFICATION: Add listener for internal links in the reader content
             const previewContent = modal.querySelector('.preview-content');
             addInternalLinkListeners(previewContent);
             Prism.highlightAllUnder(previewContent);
@@ -1567,9 +1509,10 @@
                     <div class="preview-content text-base space-y-4">
                         <p>A networked notebook for visual thinking, created by Phileas Dazeley-Gaist as a passion project. It's designed to help thinkers, writers, and creators connect ideas in a fluid, graphical way.</p>
                         <p>If you find this tool useful, consider supporting its development or checking out more work below.</p>
+                        <!-- MODIFICATION: Removed arrows from buttons -->
                         <div class="flex flex-col sm:flex-row gap-4 mt-8">
                             <a href="https://phileasdg.github.io/" target="_blank" rel="noopener noreferrer" class="ui-button w-full text-center py-2.5 rounded-lg no-underline font-semibold">Personal Blog</a>
-                            <a href="https://www.paypal.com/donate/?business=K74DYULZ2RHZ2J&no_recurring=0&item_name=Buy+me+a+coffee+%3AD&currency_code=USD" target="_blank" rel="noopener noreferrer" class="ui-button-accent w-full text-center py-2.5 rounded-lg no-underline font-semibold">Buy me a coffee</a>
+                            <a href="https://www.paypal.com/donate/?business=K74DYULZRHZ2J&no_recurring=0&item_name=Buy+me+a+coffee+%3AD&currency_code=USD" target="_blank" rel="noopener noreferrer" class="ui-button-accent w-full text-center py-2.5 rounded-lg no-underline font-semibold">Buy me a coffee</a>
                         </div>
                     </div>
                     <div class="mt-10 pt-6 border-t border-border flex justify-between items-center flex-shrink-0">
@@ -1585,29 +1528,18 @@
             };
         }
 
-        // FIX: Reworked to show mobile-specific instructions
         function showWelcomeTutorial() {
-            const instructions = isTouchDevice
-            ? `
-                <li class="flex items-start gap-3"><span class="text-accent mt-1 text-lg leading-none">▸</span><p><strong class="text-primary font-semibold">Add a Node:</strong> Tap on any empty area on the canvas.</p></li>
-                <li class="flex items-start gap-3"><span class="text-accent mt-1 text-lg leading-none">▸</span><p><strong class="text-primary font-semibold">Select a Node:</strong> Tap a node to select it and show its action buttons.</p></li>
-                <li class="flex items-start gap-3"><span class="text-accent mt-1 text-lg leading-none">▸</span><p><strong class="text-primary font-semibold">Create a Manual Link:</strong> Tap a node once to select it, then tap it again to start a link. Tap another node to connect.</p></li>
-                <li class="flex items-start gap-3"><span class="text-accent mt-1 text-lg leading-none">▸</span><p><strong class="text-primary font-semibold">Create a Text Link:</strong> Inside a node's editor, type [[Target Node Name]] to automatically link to another node by its title.</p></li>
-                <li class="flex items-start gap-3"><span class="text-accent mt-1 text-lg leading-none">▸</span><p><strong class="text-primary font-semibold">Pan & Zoom:</strong> Drag with one finger to pan, and pinch with two fingers to zoom.</p></li>
-            `
-            : `
-                <li class="flex items-start gap-3"><span class="text-accent mt-1 text-lg leading-none">▸</span><p><strong class="text-primary font-semibold">Add a Node:</strong> Simply click on any empty area on the canvas.</p></li>
-                <li class="flex items-start gap-3"><span class="text-accent mt-1 text-lg leading-none">▸</span><p><strong class="text-primary font-semibold">Create a Manual Link:</strong> Click one node, then click another to connect (or disconnect) them.</p></li>
-                <li class="flex items-start gap-3"><span class="text-accent mt-1 text-lg leading-none">▸</span><p><strong class="text-primary font-semibold">Create a Text Link:</strong> Inside a node's editor, type [[Target Node Name]] to automatically link to another node by its title.</p></li>
-                <li class="flex items-start gap-3"><span class="text-accent mt-1 text-lg leading-none">▸</span><p><strong class="text-primary font-semibold">Edit & View:</strong> Hover over any node to reveal action buttons for editing, adding linked nodes, and more.</p></li>
-                <li class="flex items-start gap-3"><span class="text-accent mt-1 text-lg leading-none">▸</span><p><strong class="text-primary font-semibold">Pan & Zoom:</strong> Drag the canvas background to move your view, and use your scroll wheel to zoom in and out.</p></li>
-            `;
-
             const modal = showModal('welcome-modal', `
                 <div class="bg-ui rounded-xl shadow-xl p-10 sm:p-12 w-full max-w-2xl border border-border modal-enter flex flex-col">
                     <h2 class="font-bold text-2xl mb-4" style="font-family: var(--font-ui);">Welcome to Synapse!</h2>
                     <p class="text-secondary mb-6">Here are a few tips to get you started with your networked notebook:</p>
-                    <ul class="space-y-4 text-secondary text-base mb-8">${instructions}</ul>
+                    <ul class="space-y-4 text-secondary text-base mb-8">
+                        <li class="flex items-start gap-3"><span class="text-accent mt-1 text-lg leading-none">▸</span><p><strong class="text-primary font-semibold">Add a Node:</strong> Simply click on any empty area on the canvas.</p></li>
+                        <li class="flex items-start gap-3"><span class="text-accent mt-1 text-lg leading-none">▸</span><p><strong class="text-primary font-semibold">Create a Manual Link:</strong> Click one node, then click another to connect (or disconnect) them.</p></li>
+                        <li class="flex items-start gap-3"><span class="text-accent mt-1 text-lg leading-none">▸</span><p><strong class="text-primary font-semibold">Create a Text Link:</strong> Inside a node's editor, type [[Target Node Name]] to automatically link to another node by its title.</p></li>
+                         <li class="flex items-start gap-3"><span class="text-accent mt-1 text-lg leading-none">▸</span><p><strong class="text-primary font-semibold">Edit & View:</strong> Hover over any node to reveal action buttons for editing, adding linked nodes, and more.</p></li>
+                        <li class="flex items-start gap-3"><span class="text-accent mt-1 text-lg leading-none">▸</span><p><strong class="text-primary font-semibold">Pan & Zoom:</strong> Drag the canvas background to move your view, and use your scroll wheel to zoom in and out.</p></li>
+                    </ul>
                     <div class="mt-auto flex justify-between items-center">
                         <div class="flex items-center gap-2">
                             <input type="checkbox" id="hide-welcome-checkbox" class="h-4 w-4 rounded border-border text-accent focus:ring-accent">
