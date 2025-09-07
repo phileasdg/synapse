@@ -1,0 +1,1621 @@
+<!DOCTYPE html>
+<html lang="en" class=""> <!-- 'dark' class will be toggled here -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synapse | Networked Notebook</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
+    
+    <!-- Prism.js for Syntax Highlighting -->
+    <link id="prism-dark-theme" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" xintegrity="sha512-mIs9kKbaw6JZFfSuo+MovJHGJDRsigVRagCk_b7wEVfbEzSCDZgrQlgokiPf7gEaiJ7sYKFFKNnzQsAZTOK6dg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link id="prism-light-theme" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" xintegrity="sha512-tN7Ec6zAFaVSG3TpNAKtk4DOHNpSw0ypEuGtT8rLBoLvSundwnLGGvbRiJlyJlCMBDLSHiyl4cAACc25MrupeA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <!-- KaTeX for LaTeX Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" xintegrity="sha384-n8MVd4RsNIU0KOVEMQNogNjeASiDdq9VNB+GTp2zpITXe5MLlo4CQTlMjNMUqsds" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" xintegrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGqsACQJMuGbi" crossorigin="anonymous"></script>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* ========================================
+         Theme & Core Styles
+         ========================================
+         */
+        :root {
+            --font-body: 'Lora', serif;
+            --font-ui: 'Inter', sans-serif;
+        }
+        
+        /* Light Theme */
+        body.theme-light {
+            --bg-main: #F8F9FA;
+            --bg-header: #F8F9FA;
+            --bg-ui: #FFFFFF;
+            --bg-ui-hover: #F1F3F5;
+            --bg-input: #FFFFFF;
+            --bg-accent: #3498db;
+            --text-primary: #212529;
+            --text-secondary: #6C757D;
+            --text-accent: #FFFFFF;
+            --border: #DEE2E6;
+            --border-focus: #3498db;
+            --shadow-color: #C6CBD0; 
+            /* MODIFICATION: Made backdrop opaque */
+            --bg-backdrop: var(--bg-main);
+        }
+
+        /* Dark Theme */
+        body.theme-dark {
+            --bg-main: #1C1C1E;
+            --bg-header: #1C1C1E;
+            --bg-ui: #2C2C2E;
+            --bg-ui-hover: #3A3A3C;
+            --bg-input: #2C2C2E;
+            --bg-accent: #3498db;
+            --text-primary: #EAEAEA;
+            --text-secondary: #8E8E93;
+            --text-accent: #FFFFFF;
+            --border: #444446;
+            --border-focus: #3498db;
+            --shadow-color: #222223; 
+            /* MODIFICATION: Made backdrop opaque */
+            --bg-backdrop: var(--bg-main);
+        }
+        
+        /* Warm Theme (Default) */
+        body, body.theme-warm {
+             --bg-main: #FBF9F4;
+             --bg-header: #FBF9F4;
+             --bg-ui: #FFFFFF;
+             --bg-ui-hover: #F8F6F1;
+             --bg-input: #FFFFFF;
+             --bg-accent: #C76A36;
+             --text-primary: #4C4239;
+             --text-secondary: #8E8071;
+             --text-accent: #FFFFFF;
+             --border: #EAE6DD;
+             --border-focus: #C76A36;
+             --shadow-color: #D3CEC4; 
+             /* MODIFICATION: Made backdrop opaque */
+             --bg-backdrop: var(--bg-main);
+        }
+
+
+        /* Assign variables */
+        body {
+            font-family: var(--font-ui);
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            overscroll-behavior: none;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        
+        /* General UI Elements */
+        .ui-button {
+            background-color: var(--bg-ui);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+            transition: background-color 0.2s, color 0.2s, border-color 0.2s, transform 0.2s, filter 0.2s;
+        }
+        .ui-button:hover { background-color: var(--bg-ui-hover); color: var(--text-primary); }
+        .ui-button.active, .ui-button-accent { background-color: var(--bg-accent); color: var(--text-accent); border-color: var(--bg-accent); }
+        .ui-button-accent:hover { filter: brightness(95%); } 
+        .ui-input, .ui-select, .ui-textarea { background-color: var(--bg-input); border: 1px solid var(--border); color: var(--text-primary); padding: 0.75rem; }
+        .ui-input:focus, .ui-select:focus, .ui-textarea:focus { outline: none; border-color: var(--border-focus); box-shadow: 0 0 0 2px color-mix(in srgb, var(--border-focus) 20%, transparent); }
+
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 0 0px color-mix(in srgb, var(--border-focus) 90%, var(--bg-ui)); }
+            50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--border-focus) 90%, var(--bg-ui)); }
+        }
+        .modal-enter { animation: fadeIn 0.2s ease-out forwards; }
+        /* MODIFICATION: Removed transparency from search fade */
+        .search-fade { filter: grayscale(100%); transition: filter 0.3s; }
+
+        /* SVG, Nodes, Links */
+        .node-shape { stroke-width: 1px; stroke: var(--border); fill: var(--bg-ui); transition: all 0.2s ease-in-out; }
+        .node:hover .node-shape { stroke: var(--border-focus); stroke-width: 1.5px; }
+        .node.pending-connection .node-shape { animation: pulse-glow 2s infinite ease-in-out; stroke: var(--border-focus) !important; stroke-width: 1.5px; }
+        .node-shape.searched-match { stroke: var(--border-focus) !important; stroke-width: 2.5px; }
+        .node-shape-root { stroke: #22c55e !important; stroke-width: 2.5px; }
+
+        /* MODIFICATION: Replaced opacity with color mixing for a solid color */
+        .link { 
+            stroke: color-mix(in srgb, var(--text-secondary) 80%, var(--bg-main)); 
+            stroke-width: 1.5px; 
+            transition: all 0.2s; 
+            pointer-events: none; 
+        }
+        .link.selected { stroke: var(--border-focus); stroke-width: 2.5px; }
+        #arrowhead path, #arrowhead-start path { fill: color-mix(in srgb, var(--text-secondary) 80%, var(--bg-main)); }
+        #arrowhead-selected path, #arrowhead-start-selected path { fill: var(--border-focus); }
+
+        /* Node Content & UI */
+        .node-title { font-family: var(--font-ui); font-weight: 600; font-size: 14px; fill: var(--text-primary); }
+        .node-image-preview { object-fit: cover; width: 100%; height: 100%; }
+        .node-markdown-render { font-family: var(--font-body); color: var(--text-secondary); font-size: 12px; line-height: 1.35; overflow: hidden; word-wrap: break-word; text-align: left; pointer-events: none; display: block; height: 100%; }
+        .node-markdown-render h1, .node-markdown-render h2, .node-markdown-render h3 { font-size: 13px; font-weight: 600; margin: 0; padding: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+        .node-markdown-render p, .node-markdown-render ul, .node-markdown-render ol { margin: 0; padding: 0; }
+        .node-markdown-render pre, .node-markdown-render code, .node-markdown-render blockquote, .node-markdown-render img { display: none; }
+        .node-attachments-container { color: var(--text-secondary); }
+
+        .node-action-button { cursor: pointer; transition: all 0.2s ease-in-out; border-radius: 50%; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; user-select: none; border: 1px solid var(--border); background-color: var(--bg-ui); color: var(--text-secondary); box-shadow: 0 2px 4px -1px var(--shadow-color); opacity: 0; pointer-events: none; transform: scale(0.8); }
+        .node:hover .node-action-button, .node.pending-connection .node-action-button { opacity: 1; pointer-events: auto; transform: scale(1); }
+        .node-action-button:hover { transform: scale(1.15); }
+        .node-action-button.add:hover, .node-action-button.edit:hover { background-color: var(--bg-accent); color: var(--text-accent); }
+        .node-action-button.delete:hover { background-color: #ef4444; color: white; }
+        .node-action-button.download:hover { background-color: #16a34a; color: white; }
+        
+        .node-preview-button {
+            cursor: pointer; transition: all 0.2s ease-in-out; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            width: 32px; height: 32px; user-select: none; border: 1px solid var(--border); background-color: var(--bg-ui);
+            color: var(--text-secondary); box-shadow: 0 4px 6px -1px var(--shadow-color);
+            opacity: 0; pointer-events: none; transform: scale(0.8); 
+        }
+        .node:hover .node-preview-button { opacity: 1; pointer-events: auto; transform: scale(1); }
+        .node-preview-button:hover { transform: scale(1.1); background-color: var(--bg-accent); color: var(--text-accent); }
+
+
+        /* Markdown Preview & Image Carousel in Modals */
+        .preview-content { font-family: var(--font-body); color: var(--text-primary); line-height: 1.7; }
+        .preview-content h1, .preview-content h2, .preview-content h3 { font-family: var(--font-ui); font-weight: 700; color: var(--text-primary); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 0.75rem;}
+        .preview-content h1 { font-size: 1.75rem; } .preview-content h2 { font-size: 1.5rem; } .preview-content h3 { font-size: 1.25rem; }
+        .preview-content a { color: var(--bg-accent); text-decoration: underline; text-underline-offset: 2px;}
+        /* FIX: Ensure anchor tags styled as buttons have the correct text color */
+        .preview-content a.ui-button { color: var(--text-secondary); text-decoration: none; }
+        .preview-content a.ui-button:hover { color: var(--text-primary); }
+        .preview-content a.ui-button-accent { color: var(--text-accent); text-decoration: none; }
+        /* MODIFICATION: Style inline code to be more distinct */
+        .preview-content code {
+            background-color: color-mix(in srgb, var(--text-primary) 5%, var(--bg-ui));
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+            border: 1px solid var(--border);
+        }
+        /* MODIFICATION: Let Prism.js theme handle styling for pre tags */
+        .preview-content pre { 
+            overflow-x: auto; 
+            border-radius: 8px; /* Ensure pre tags have rounded corners */
+        }
+        .preview-content blockquote { border-left: 3px solid var(--border-focus); padding-left: 1rem; color: var(--text-secondary); margin: 1rem 0; }
+        .preview-content p { margin-bottom: 1rem; }
+        /* MODIFICATION: Fix list item display */
+        .preview-content ul, .preview-content ol { padding-left: 2rem; margin-bottom: 1rem; }
+        .preview-content li { margin-bottom: 0.5rem; }
+        .preview-content ul { list-style-type: disc; }
+        .preview-content ol { list-style-type: decimal; }
+        .preview-content ul ul, .preview-content ol ul { list-style-type: circle; }
+        .preview-content ul ul ul, .preview-content ol ul ul { list-style-type: square; }
+        .preview-content img { max-width: 100%; border-radius: 0.5rem; margin-top: 1rem; margin-bottom: 1rem; }
+
+        /* MODIFICATION: Styles for internal node links in Markdown previews */
+        .preview-content .internal-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-bottom: 1px dashed var(--text-secondary);
+            cursor: pointer;
+            transition: color 0.2s, border-color 0.2s;
+            font-weight: 600;
+        }
+        .preview-content .internal-link:hover {
+            color: var(--text-primary);
+            border-bottom-color: var(--text-primary);
+        }
+        .preview-content .internal-link-broken {
+            color: #ef4444; /* red-500 */
+            text-decoration: none;
+            border-bottom: 1px dotted #ef4444;
+            cursor: not-allowed;
+        }
+
+        /* MODIFICATION: Styles for Reader Modal Tabs */
+        .reader-tab-btn {
+            border: 1px solid transparent;
+            border-bottom: none;
+            color: var(--text-secondary);
+        }
+        .reader-tab-btn.active {
+            color: var(--text-primary);
+            border-color: var(--border);
+            background-color: var(--bg-ui);
+        }
+        
+        #modal-container {
+            position: relative;
+            z-index: 50;
+        }
+        
+        #layout-panel, #edge-edit-panel {
+            transform: translateZ(0); /* Promotes to a new layer for z-index consistency */
+            background-color: var(--bg-ui); /* MODIFICATION: Ensure panels are opaque */
+        }
+    </style>
+</head>
+<body class="theme-warm h-screen w-screen overflow-hidden flex flex-col">
+
+    <!-- Header and Controls -->
+    <header class="p-3 bg-header border-b border-border shadow-sm z-30 transition-colors">
+        <div class="container mx-auto flex flex-wrap justify-between items-center gap-y-2 gap-x-4">
+              <!-- Left: Notework Management -->
+            <div class="flex items-center gap-3">
+                <h1 class="text-xl font-bold tracking-tight" style="font-family: var(--font-ui);">Synapse</h1>
+                <div class="h-6 w-px bg-border hidden sm:block"></div>
+                <div class="flex items-center gap-2">
+                    <span id="current-project-name" class="text-sm text-secondary hidden sm:block">Untitled Notework</span>
+                    <button id="save-project" title="Save Notework As..." class="ui-button px-3 py-1 text-sm rounded-md">Save As...</button>
+                    <label for="open-project-input" title="Open Notework" class="ui-button px-3 py-1 text-sm rounded-md cursor-pointer">Open</label>
+                    <input type="file" id="open-project-input" class="hidden" accept=".json,.synapse,application/json">
+                    <button id="new-project" title="New Notework" class="ui-button px-3 py-1 text-sm rounded-md">New</button>
+                </div>
+            </div>
+            
+              <!-- Right: Tools -->
+            <div class="flex items-center gap-3">
+                <div class="relative">
+                    <input type="search" id="search-input" placeholder="Search..." class="ui-input w-36 sm:w-48 text-sm pl-8 pr-3 py-1.5 rounded-md focus:outline-none transition-all">
+                    <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+                <div class="h-6 w-px bg-border"></div>
+                <button id="layout-panel-toggle" title="Toggle Layout Options" class="ui-button p-2 rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                </button>
+                <button id="center-view-btn" title="Center View" class="ui-button p-2 rounded-full">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                </button>
+                <button id="theme-cycler" class="ui-button p-2 rounded-full flex items-center justify-center">
+                    <div id="theme-icon-warm" class="text-xl leading-none">🕯️</div>
+                    <svg id="theme-icon-light" class="hidden" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                    <svg id="theme-icon-dark" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                </button>
+                <button id="about-toggle" title="About Synapse" class="ui-button p-2 rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Layout Options Panel (Initially Hidden) -->
+    <div id="layout-panel" class="hidden absolute top-20 left-4 bg-ui p-6 rounded-xl shadow-2xl border border-border z-40 max-w-xs modal-enter">
+        <h2 class="font-bold text-lg mb-4" style="font-family: var(--font-ui);">Graph Controls</h2>
+        
+        <h3 class="text-sm font-semibold text-secondary mb-2">Layout</h3>
+        <div class="grid grid-cols-2 gap-2">
+            <button id="layout-force" class="ui-button px-3 py-2 text-sm rounded-md w-full">Force</button>
+            <button id="layout-hierarchical" class="ui-button px-3 py-2 text-sm rounded-md w-full">Tree</button>
+            <button id="layout-circular" class="ui-button px-3 py-2 text-sm rounded-md w-full">Circular</button>
+            <button id="layout-grid" class="ui-button px-3 py-2 text-sm rounded-md w-full col-span-2">Grid</button>
+        </div>
+        <p class="text-xs text-secondary mt-2">For Tree layout, right-click a node to set it as root.</p>
+
+        <hr class="my-4 border-border">
+
+        <h3 class="text-sm font-semibold text-secondary mb-2">Visible Links</h3>
+         <div class="flex items-center gap-2">
+            <button id="toggle-manual-links" title="Toggle Manual Links" class="ui-button px-3 py-2 text-sm rounded-md w-full active">Manual</button>
+            <button id="toggle-markdown-links" title="Toggle Text Links" class="ui-button px-3 py-2 text-sm rounded-md w-full active">Text</button>
+        </div>
+    </div>
+    
+    <!-- Main SVG Canvas -->
+    <main class="flex-1 relative z-10">
+        <svg id="network-canvas" class="w-full h-full cursor-grab"></svg>
+        <div id="action-helper-bar" class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-ui text-primary px-4 py-2 rounded-lg shadow-lg hidden z-20 transition-opacity border border-border text-sm"></div>
+    </main>
+    
+    <!-- Modals are inserted here by JS -->
+    <div id="modal-container"></div>
+    
+    <!-- Link Edit Panel -->
+    <div id="edge-edit-panel" class="hidden absolute bg-ui rounded-lg shadow-xl p-2 border border-border z-40 modal-enter">
+        <div class="flex items-center gap-1">
+            <div id="edge-controls-manual">
+                <button id="edge-dir-from" title="Direction: To Source" class="ui-button text-sm p-1 border-none">←</button>
+                <button id="edge-dir-to" title="Direction: To Target" class="ui-button text-sm p-1 border-none">→</button>
+                <button id="edge-dir-both" title="Direction: Bidirectional" class="ui-button text-sm p-1 border-none">↔</button>
+                <div class="w-px h-5 bg-border mx-1 inline-block"></div>
+            </div>
+            <div id="edge-controls-markdown" class="hidden"></div>
+            <button id="edge-delete" title="Delete Link" class="ui-button text-sm p-1 border-none hover:bg-red-500 hover:text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ===================================
+        // INITIALIZATION & GLOBAL STATE
+        // ===================================
+        const svg = d3.select("#network-canvas");
+        let width = svg.node().getBoundingClientRect().width;
+        let height = svg.node().getBoundingClientRect().height;
+        const container = svg.append("g");
+
+        let nodes = [];
+        let links = [];
+        let nodeIdCounter = 0;
+        let selectedNodeForEdge = null;
+        let selectedLink = null;
+        let currentLayout = 'force';
+        let currentRootId = null;
+        let activeNodeEditing = null;
+        let activeNodeReading = null;
+        let currentProjectName = 'Untitled Notework';
+        let isProjectFromFile = false; 
+        let edgeVisibility = { manual: true, markdown: true };
+
+        // --- DOM Element Refs ---
+        const searchInput = document.getElementById('search-input');
+        const actionHelperBar = document.getElementById('action-helper-bar');
+        const projectNameSpan = document.getElementById('current-project-name');
+        const modalContainer = document.getElementById('modal-container');
+        const edgeEditPanel = document.getElementById('edge-edit-panel');
+        const layoutButtons = { force: document.getElementById('layout-force'), hierarchical: document.getElementById('layout-hierarchical'), circular: document.getElementById('layout-circular'), grid: document.getElementById('layout-grid'), }; 
+        let node, link, linkHitbox; // D3 selections
+
+        const ICONS = { 
+            attachment: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>`,
+        }; 
+
+        // --- Markdown & LaTeX Converter ---
+        const katexExtension = () => [{ type: 'output', filter: function (html) { if (typeof katex === 'undefined') { console.warn('KaTeX not loaded.'); return html; } const parts = html.split(/(<code[\s\S]*?>[\s\S]*?<\/code>|<pre[\s\S]*?>[\s\S]*?<\/pre>)/); const processedParts = parts.map((part, index) => { if (index % 2 === 1) { return part; } part = part.replace(/<p>\$\$([\s\S]+?)\$\$<\/p>/g, (match, content) => { try { return katex.renderToString(content.trim(), { displayMode: true, throwOnError: false, trust: true }); } catch (e) { return `<span class="text-red-500">LaTeX Error: ${e.message}</span>`; } }); part = part.replace(/(?<!\\)\$([^\$\n]+?)\$/g, (match, content) => { try { return katex.renderToString(content.trim(), { displayMode: false, throwOnError: false, trust: true }); } catch (e) { return `<span class="text-red-500">LaTeX Error: ${e.message}</span>`; } }); return part; }); return processedParts.join(''); } }]; 
+        showdown.extension('katex', katexExtension);
+
+        // MODIFICATION: Add showdown extension for [[Internal Links]]
+        showdown.extension('synapseLinks', () => [{
+            type: 'lang',
+            regex: /\[\[(.*?)\]\]/g,
+            replace: (match, nodeName) => {
+                const trimmedNodeName = nodeName.trim();
+                // We don't check for node existence here because the nodes array might not be up-to-date.
+                // The check will happen in the click handler. We just create the link structure.
+                return `<a href="#" class="internal-link" title="Open node: ${trimmedNodeName}">${trimmedNodeName}</a>`;
+            }
+        }]);
+
+        const mdConverter = new showdown.Converter({ extensions: ['katex', 'synapseLinks'], tables: true, strikethrough: true, tasklists: true });
+
+        // ===================================
+        // THEME MANAGEMENT
+        // ===================================
+        const themeCycler = document.getElementById('theme-cycler');
+        const themeIcons = {
+            warm: document.getElementById('theme-icon-warm'),
+            light: document.getElementById('theme-icon-light'),
+            dark: document.getElementById('theme-icon-dark')
+        };
+        const themes = ['warm', 'light', 'dark'];
+
+        function applyTheme(theme) {
+            const lightThemeLink = document.getElementById('prism-light-theme');
+            const darkThemeLink = document.getElementById('prism-dark-theme');
+
+            document.body.classList.remove('theme-warm', 'theme-light', 'theme-dark');
+            document.body.classList.add(`theme-${theme}`);
+            Object.values(themeIcons).forEach(icon => icon.classList.add('hidden'));
+            if (themeIcons[theme]) {
+                themeIcons[theme].classList.remove('hidden');
+            }
+
+            if (theme === 'dark') {
+                darkThemeLink.disabled = false;
+                lightThemeLink.disabled = true;
+            } else { // 'warm' and 'light' themes use the light prism theme
+                darkThemeLink.disabled = true;
+                lightThemeLink.disabled = false;
+            }
+        }
+
+        themeCycler.addEventListener('click', () => {
+            const currentThemeClass = Array.from(document.body.classList).find(c => c.startsWith('theme-'));
+            const currentTheme = currentThemeClass ? currentThemeClass.replace('theme-', '') : 'warm';
+            const currentIndex = themes.indexOf(currentTheme);
+            const nextTheme = themes[(currentIndex + 1) % themes.length];
+            applyTheme(nextTheme);
+            localStorage.setItem('synapse-theme', nextTheme);
+        });
+
+        // ===================================
+        // VISUAL FEEDBACK & INDICATORS
+        // ===================================
+        function showActionHelper(message) {
+            actionHelperBar.textContent = message;
+            actionHelperBar.classList.remove('hidden');
+        }
+
+        function hideActionHelper() {
+            actionHelperBar.classList.add('hidden');
+        }
+
+        function updateConnectionStateIndicator() {
+            if (node) node.classed('pending-connection', d => selectedNodeForEdge && d.id === selectedNodeForEdge.id);
+            svg.style('cursor', selectedNodeForEdge ? 'crosshair' : 'grab');
+            
+            if (selectedNodeForEdge) {
+                showActionHelper('Click another node to create/remove a link, or press ESC to cancel.');
+            } else {
+                hideActionHelper();
+            }
+        }
+        
+        function cancelEdgeSelection() {
+            selectedNodeForEdge = null;
+            updateConnectionStateIndicator();
+        }
+        
+        // ===================================
+        // CORE D3 & GRAPH LOGIC
+        // ===================================
+        const defs = container.append('defs');
+        const arrow = defs.append('marker').attr('id', 'arrowhead').attr('viewBox', '-10 -5 10 10').attr('refX', -1).attr('refY', 0).attr('orient', 'auto').attr('markerWidth', 8).attr('markerHeight', 8).attr('xoverflow', 'visible');
+        arrow.append('svg:path').attr('d', 'M -10,-5 L 0,0 L -10,5');
+        const arrowStart = defs.append('marker').attr('id', 'arrowhead-start').attr('viewBox', '0 -5 10 10').attr('refX', 1).attr('refY', 0).attr('orient', 'auto').attr('markerWidth', 8).attr('markerHeight', 8).attr('xoverflow', 'visible');
+        arrowStart.append('svg:path').attr('d', 'M 10,-5 L 0,0 L 10,5');
+        const arrowSelected = defs.append('marker').attr('id', 'arrowhead-selected').attr('viewBox', '-10 -5 10 10').attr('refX', -1).attr('refY', 0).attr('orient', 'auto').attr('markerWidth', 8).attr('markerHeight', 8).attr('xoverflow', 'visible');
+        arrowSelected.append('svg:path').attr('d', 'M -10,-5 L 0,0 L -10,5');
+        const arrowStartSelected = defs.append('marker').attr('id', 'arrowhead-start-selected').attr('viewBox', '0 -5 10 10').attr('refX', 1).attr('refY', 0).attr('orient', 'auto').attr('markerWidth', 8).attr('markerHeight', 8).attr('xoverflow', 'visible');
+        arrowStartSelected.append('svg:path').attr('d', 'M 10,-5 L 0,0 L 10,5');
+
+        const filter = defs.append("filter").attr("id", "node-shadow").attr("x", "-50%").attr("y", "-50%").attr("width", "200%").attr("height", "200%");
+        filter.append("feDropShadow").attr("dx", 0).attr("dy", 2).attr("stdDeviation", 4).attr("flood-color", "var(--shadow-color)");
+        
+        const simulation = d3.forceSimulation(nodes)
+            .force("link", d3.forceLink(links).id(d => d.id).distance(200))
+            .force("charge", d3.forceManyBody().strength(-800))
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .on("tick", ticked);
+
+        linkHitbox = container.insert("g", ".nodes").attr("class", "link-hitboxes").selectAll(".link-hitbox");
+        link = container.insert("g", ".nodes").attr("class", "links").selectAll(".link");
+        node = container.append("g").attr("class", "nodes").selectAll(".node");
+
+        const zoom = d3.zoom().scaleExtent([0.1, 4]).on("zoom", (event) => container.attr("transform", event.transform));
+        svg.call(zoom);
+
+        function update() {
+            const visibleLinks = links.filter(l => edgeVisibility[l.type]);
+
+            // Update visible links
+            link = link.data(visibleLinks, d => `${d.source.id}-${d.target.id}`);
+            link.exit().remove();
+            link = link.enter().append("line").attr("class", "link").merge(link)
+                .classed('link-markdown', d => d.type === 'markdown');
+            link.attr('marker-start', d => (d.direction === 'from' || d.direction === 'both') ? 'url(#arrowhead-start)' : null)
+                .attr('marker-end', d => (d.direction === 'to' || d.direction === 'both') ? 'url(#arrowhead)' : null);
+
+            // Update invisible link hitboxes for easier selection
+            linkHitbox = linkHitbox.data(visibleLinks, d => `${d.source.id}-${d.target.id}`);
+            linkHitbox.exit().remove();
+            linkHitbox = linkHitbox.enter().append("line")
+                .style("stroke", "transparent")
+                .style("stroke-width", "15px")
+                .style("cursor", "pointer")
+                .on('click', handleLinkClick)
+                .merge(linkHitbox);
+
+            // Update nodes
+            node = node.data(nodes, d => d.id);
+            node.exit().remove();
+            
+            const nodeEnter = node.enter().append("g")
+                .attr("class", "node cursor-pointer")
+                .attr("filter", "url(#node-shadow)")
+                .call(drag(simulation))
+                .on("click", handleNodeClick)
+                .on("contextmenu", handleNodeRightClick);
+            
+            node = nodeEnter.merge(node);
+            node.each(function(d) { renderNodeContent(d3.select(this), d); });
+            
+            simulation.nodes(nodes);
+            simulation.force("link").links(links);
+            if (currentLayout === 'force') {
+                simulation.alpha(1).restart();
+            } else {
+                simulation.stop();
+            }
+            
+            ticked();
+            saveToLocal();
+            handleSearch();
+        }
+
+        function handleNodeClick(event, d) {
+            event.stopPropagation();
+            hideEdgeEditPanel();
+            if (event.altKey) {
+                deleteNode(d.id);
+                return;
+            }
+
+            if (!selectedNodeForEdge) {
+                selectedNodeForEdge = d;
+            } else {
+                if (selectedNodeForEdge.id !== d.id) {
+                    const existingLinkIndex = links.findIndex(l => (l.type === 'manual' && ((l.source.id === selectedNodeForEdge.id && l.target.id === d.id) || (l.source.id === d.id && l.target.id === selectedNodeForEdge.id))));
+                    if (existingLinkIndex > -1) {
+                        links.splice(existingLinkIndex, 1);
+                    } else {
+                        links.push({ source: selectedNodeForEdge, target: d, direction: 'to', type: 'manual' });
+                    }
+                }
+                selectedNodeForEdge = null;
+                update();
+                if(['hierarchical'].includes(currentLayout)) applyCurrentLayout();
+            }
+            updateConnectionStateIndicator();
+        }
+        
+        function handleNodeRightClick(event, d) { 
+            event.preventDefault(); 
+            if (['hierarchical'].includes(currentLayout)) { 
+                currentRootId = d.id; 
+                applyCurrentLayout(); 
+                update(); 
+            } 
+        }
+
+        function handleLinkClick(event, d) {
+            event.stopPropagation();
+            cancelEdgeSelection();
+
+            const isMarkdown = d.type === 'markdown';
+            if (isMarkdown) {
+                // For text links, just highlight them but don't show an edit panel
+                link.filter(ld => ld === selectedLink).classed('selected', false);
+                link.filter(ld => ld === d).classed('selected', true);
+                selectedLink = d;
+                // Auto-deselect after a moment
+                setTimeout(() => {
+                    link.filter(ld => ld === d).classed('selected', false);
+                    if(selectedLink === d) selectedLink = null;
+                }, 1000);
+                return;
+            }
+
+            const isAlreadySelected = selectedLink === d;
+            if (selectedLink && selectedLink !== d) {
+                link.filter(ld => ld === selectedLink)
+                    .classed('selected', false)
+                    .attr('marker-start', l => (l.direction === 'from' || l.direction === 'both') ? 'url(#arrowhead-start)' : null)
+                    .attr('marker-end', l => (l.direction === 'to' || l.direction === 'both') ? 'url(#arrowhead)' : null);
+            }
+
+            if (isAlreadySelected) {
+                hideEdgeEditPanel();
+                return;
+            }
+
+            const currentLinkSelection = link.filter(ld => ld === d);
+            currentLinkSelection.classed('selected', true)
+                .attr('marker-start', l => (l.direction === 'from' || l.direction === 'both') ? 'url(#arrowhead-start-selected)' : null)
+                .attr('marker-end', l => (l.direction === 'to' || l.direction === 'both') ? 'url(#arrowhead-selected)' : null);
+            
+            selectedLink = d;
+
+            edgeEditPanel.querySelector('#edge-controls-manual').style.display = 'inline-block';
+            edgeEditPanel.querySelector('#edge-controls-markdown').style.display = 'none';
+            edgeEditPanel.querySelector('#edge-delete').style.display = 'block';
+            
+            edgeEditPanel.style.left = `${event.pageX + 15}px`;
+            edgeEditPanel.style.top = `${event.pageY - 20}px`;
+            edgeEditPanel.classList.remove('hidden');
+
+            updateEdgeEditPanelButtons();
+        }
+
+        function renderNodeContent(group, d) {
+            group.selectAll("*").remove();
+            
+            const imageUrls = extractImageUrls(d);
+            const hasImage = imageUrls.length > 0;
+            const hasTextContent = d.content && d.content.trim() !== '';
+            const hasAttachments = d.attachments && d.attachments.length > 0;
+            const hasContent = hasTextContent || hasAttachments;
+            
+            const nodeWidth = 180;
+            let nodeHeight = 80; // Default for circle node with only a title
+
+            const isRect = hasImage || hasContent;
+            
+            if (isRect) {
+                let calculatedHeight = 0;
+                if (hasImage) calculatedHeight += 80; 
+                if (hasContent) calculatedHeight += 65;
+                nodeHeight = Math.max(80, calculatedHeight); 
+            }
+            
+            if (isRect) {
+                group.append("rect").attr("width", nodeWidth).attr("height", nodeHeight)
+                    .attr("x", -nodeWidth / 2).attr("y", -nodeHeight / 2).attr("rx", 8)
+                    .attr("class", "node-shape");
+            } else {
+                group.append("circle").attr("r", 40).attr("class", "node-shape");
+            }
+            
+            let currentY = -nodeHeight / 2;
+
+            if (hasImage) {
+                 const clipId = `clip-${d.id}`;
+                 group.append('clipPath').attr('id', clipId)
+                     .append('rect')
+                     .attr("width", nodeWidth).attr("height", 80).attr("x", -nodeWidth / 2).attr("y", currentY)
+                     .attr("rx", 8).attr("ry", 8);
+
+                const imageFO = group.append('foreignObject')
+                    .attr('x', -nodeWidth / 2).attr('y', currentY)
+                    .attr('width', nodeWidth).attr('height', 80)
+                    .attr('clip-path', `url(#${clipId})`);
+                imageFO.html(`<img src="${imageUrls[0]}" class="node-image-preview" onerror="this.style.display='none'">`);
+                currentY += 80;
+            }
+
+            if (hasContent || !isRect) {
+                const title = d.name.length > 22 ? d.name.substring(0, 20) + '...' : d.name;
+                const titleElem = group.append("text").attr("class", "node-title select-none").text(title);
+                
+                if (isRect) {
+                    titleElem.attr("text-anchor", "start").attr("x", -nodeWidth / 2 + 12).attr("y", currentY + 20);
+                    currentY += 35;
+                     if (hasTextContent) {
+                         const textPreviewHeight = hasAttachments ? 20 : 40;
+                         const fo = group.append('foreignObject')
+                             .attr('x', -nodeWidth / 2 + 12).attr('y', currentY - 10)
+                             .attr('width', nodeWidth - 24).attr('height', textPreviewHeight);
+                         fo.html(`<div class="node-markdown-render">${mdConverter.makeHtml(d.content)}</div>`);
+                     }
+                } else {
+                    titleElem.attr("text-anchor", "middle").attr("x", 0).attr("y", 5);
+                }
+            }
+            
+            if (hasAttachments) {
+                const attachmentsFO = group.append('foreignObject')
+                    .attr('x', -nodeWidth / 2 + 10)
+                    .attr('y', nodeHeight/2 - 26)
+                    .attr('width', 50)
+                    .attr('height', 22);
+                
+                const attachmentHTML = `<div class="node-attachments-container flex items-center gap-1.5 text-xs p-1 rounded-md">${ICONS.attachment} ${d.attachments.length}</div>`;
+                attachmentsFO.html(attachmentHTML);
+            }
+            
+            // Action buttons
+            const btnPos = { x: isRect ? nodeWidth/2 + 8 : 35, y: isRect ? 0 : 0 };
+            
+            group.append('foreignObject').attr('x', btnPos.x - 11).attr('y', btnPos.y - 38).attr('width', 22).attr('height', 22)
+                .append('xhtml:div').attr('class', 'node-action-button add').html('＋').on('click', (e, d) => { e.stopPropagation(); addLinkedNode(d); });
+            
+            group.append('foreignObject').attr('x', btnPos.x - 11).attr('y', btnPos.y + 16).attr('width', 22).attr('height', 22)
+                .append('xhtml:div').attr('class', 'node-action-button delete').html('×')
+                .on('click', (e, d) => { e.stopPropagation(); showConfirm(() => deleteNode(d.id), `Delete "${d.name}"?`); });
+            
+            const editIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>`;
+            group.append('foreignObject').attr('x', -btnPos.x - 11).attr('y', btnPos.y - 38).attr('width', 22).attr('height', 22)
+                .append('xhtml:div').attr('class', 'node-action-button edit').html(editIcon).on('click', (e, d) => { e.stopPropagation(); openNodeModal(d); });
+
+            if (d.content) {
+                const downloadIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
+                group.append('foreignObject').attr('x', -btnPos.x - 11).attr('y', btnPos.y + 16).attr('width', 22).attr('height', 22)
+                    .append('xhtml:div').attr('class', 'node-action-button download').html(downloadIcon).on('click', (e, d) => { e.stopPropagation(); downloadMarkdown(d.content, d.name); });
+            }
+
+            if(hasContent) {
+                const eyeIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+                group.append('foreignObject').attr('x', -16).attr('y', isRect ? -nodeHeight/2 + 16 : 0).attr('width', 32).attr('height', 32)
+                    .append('xhtml:div').attr('class', 'node-preview-button').html(eyeIcon)
+                    .on('click', (e, d) => { e.stopPropagation(); openMarkdownReaderModal(d); });
+            }
+        }
+        
+        function positionLink(selection) {
+            selection.each(function(d) {
+                const source = d.source; const target = d.target;
+                const sourceDim = getNodeDimensions(source);
+                const targetDim = getNodeDimensions(target);
+                const dx = target.x - source.x; const dy = target.y - source.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist === 0) return;
+
+                let sourcePadding = 0;
+                if (sourceDim.isRect) {
+                    const angle = Math.atan2(-dy, -dx);
+                    const w = sourceDim.width / 2; const h = sourceDim.height / 2;
+                    sourcePadding = (w * h) / Math.sqrt(Math.pow(h * Math.cos(angle), 2) + Math.pow(w * Math.sin(angle), 2));
+                } else { sourcePadding = sourceDim.width / 2; }
+
+                let targetPadding = 0;
+                if (targetDim.isRect) {
+                    const angle = Math.atan2(dy, dx);
+                    const w = targetDim.width / 2; const h = targetDim.height / 2;
+                    targetPadding = (w * h) / Math.sqrt(Math.pow(h * Math.cos(angle), 2) + Math.pow(w * Math.sin(angle), 2));
+                } else { targetPadding = targetDim.width / 2; }
+                
+                sourcePadding += 5; targetPadding +=5;
+
+                const sourceRatio = dist > 0 ? (dist - sourcePadding) / dist : 0;
+                const targetRatio = dist > 0 ? (dist - targetPadding) / dist : 0;
+                
+                d3.select(this)
+                    .attr("x1", target.x - dx * sourceRatio).attr("y1", target.y - dy * sourceRatio)
+                    .attr("x2", source.x + dx * targetRatio).attr("y2", source.y + dy * targetRatio);
+            });
+        }
+
+        function ticked() {
+            node.attr("transform", d => `translate(${d.x},${d.y})`);
+            positionLink(link);
+            positionLink(linkHitbox);
+        }
+        
+        function drag(simulation) {
+            function dragstarted(event, d) { if (!event.active && currentLayout === 'force') simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; }
+            function dragged(event, d) { d.fx = event.x; d.fy = event.y; if (currentLayout !== 'force') { d.x = event.x; d.y = event.y; ticked(); } }
+            function dragended(event, d) { if (!event.active && currentLayout === 'force') simulation.alphaTarget(0); if (currentLayout === 'force') { d.fx = null; d.fy = null; } }
+            return d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended);
+        }
+
+        // ===================================
+        // HELPER FUNCTIONS
+        // ===================================
+        function isImageUrl(url) { try { if(!url) return false; const urlObj = new URL(url, window.location.href); return /\.(jpg|jpeg|png|gif|svg|webp)$/i.test(urlObj.pathname); } catch(e){ return false; } }
+        
+        function getNodeDimensions(nodeData) {
+            const imageUrls = extractImageUrls(nodeData);
+            const hasImage = imageUrls.length > 0;
+            const hasTextContent = nodeData.content && nodeData.content.trim() !== '';
+            const hasAttachments = nodeData.attachments && nodeData.attachments.length > 0;
+            const hasContent = hasTextContent || hasAttachments;
+
+            const isRect = hasImage || hasContent;
+            if (!isRect) return { width: 80, height: 80, isRect: false };
+
+            const nodeWidth = 180;
+            let nodeHeight;
+            if (hasImage) {
+                nodeHeight = 80; // Image
+                if (hasContent) nodeHeight += 65;
+            } else { // No image, but has content
+                nodeHeight = 35; // Title
+                if(hasTextContent) nodeHeight += 40;
+                if(hasAttachments) nodeHeight += 25;
+            }
+            nodeHeight = Math.max(80, nodeHeight); 
+            
+            return { width: nodeWidth, height: nodeHeight, isRect: true };
+        }
+
+        function fitView(duration = 750) { if (nodes.length === 0) { svg.transition().duration(duration).call(zoom.transform, d3.zoomIdentity); return; } setTimeout(() => { const bounds = container.node().getBBox(); const parent = svg.node(); const fullWidth = parent.clientWidth; const fullHeight = parent.clientHeight; const { x, y, width, height } = bounds; if (width === 0 || height === 0) return; const midX = x + width / 2; const midY = y + height / 2; const scale = 0.9 / Math.max(width / fullWidth, height / fullHeight); const translate = [fullWidth / 2 - scale * midX, fullHeight / 2 - scale * midY]; const transform = d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale); svg.transition().duration(duration).call(zoom.transform, transform); }, 100); }
+        
+        // ===================================
+        // GRAPH MODIFICATION & LINK PARSING
+        // ===================================
+        function parseMarkdownLinks(sourceNode) {
+            const newLinks = [];
+            if (!sourceNode.content) return newLinks;
+            const linkRegex = /\[\[(.*?)\]\]/g;
+            let match;
+            while ((match = linkRegex.exec(sourceNode.content)) !== null) {
+                const targetName = match[1].trim().toLowerCase();
+                const targetNode = nodes.find(n => n.name.trim().toLowerCase() === targetName && n.id !== sourceNode.id);
+                if (targetNode) {
+                    newLinks.push({ source: sourceNode, target: targetNode, direction: 'to', type: 'markdown' });
+                }
+            }
+            return newLinks;
+        }
+
+        function updateAllMarkdownLinks() {
+            links = links.filter(l => l.type !== 'markdown');
+            nodes.forEach(node => {
+                const newLinks = parseMarkdownLinks(node);
+                links.push(...newLinks);
+            });
+        }
+
+        function addLinkedNode(sourceNode) {
+            nodeIdCounter++;
+            const newNode = {id: nodeIdCounter, x: sourceNode.x + 120, y: sourceNode.y + 120, name: `Node ${nodeIdCounter}`, content: '', attachments: []};
+            nodes.push(newNode);
+            links.push({ source: sourceNode, target: newNode, direction: 'to', type: 'manual' });
+            update();
+            if(['hierarchical'].includes(currentLayout)) applyCurrentLayout();
+        }
+
+        function deleteNode(nodeId) {
+            nodes = nodes.filter(n => n.id !== nodeId);
+            links = links.filter(l => l.source.id !== nodeId && l.target.id !== nodeId);
+            if(selectedNodeForEdge && selectedNodeForEdge.id === nodeId) selectedNodeForEdge = null;
+            if(currentRootId === nodeId) currentRootId = nodes.length > 0 ? nodes[0].id : null;
+            applyCurrentLayout(); 
+            update();
+        }
+
+        function downloadMarkdown(content, filename) { 
+            if (!content) return; 
+            const sanitizedFilename = filename ? filename.replace(/[^a-z0-9]/gi, '_').toLowerCase() : 'content'; 
+            const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' }); 
+            const url = URL.createObjectURL(blob); 
+            const a = document.createElement('a'); 
+            a.href = url; a.download = `${sanitizedFilename}.md`; 
+            document.body.appendChild(a); a.click(); document.body.removeChild(a); 
+            URL.revokeObjectURL(url); 
+        }
+
+        // ===================================
+        // SEARCH FUNCTIONALITY
+        // ===================================
+        function handleSearch() {
+            const query = searchInput.value.toLowerCase().trim();
+            if (!query) {
+                if(node) node.selectAll('.node-shape').classed('searched-match', false);
+                container.selectAll('.node, .link').classed('search-fade', false);
+                return;
+            }
+            const matchingNodeIds = new Set();
+            nodes.forEach(n => {
+                const nameMatch = n.name && n.name.toLowerCase().includes(query);
+                const contentMatch = n.content && n.content.toLowerCase().includes(query);
+                if (nameMatch || contentMatch) {
+                    matchingNodeIds.add(n.id);
+                }
+            });
+            node.each(function(d) {
+                const isMatch = matchingNodeIds.has(d.id);
+                d3.select(this).select('.node-shape').classed('searched-match', isMatch);
+                d3.select(this).classed('search-fade', !isMatch);
+            });
+            link.classed('search-fade', l => !matchingNodeIds.has(l.source.id) || !matchingNodeIds.has(l.target.id));
+        }
+        searchInput.addEventListener('input', handleSearch);
+
+        // ===================================
+        // PROJECT MANAGEMENT (FILE-BASED)
+        // ===================================
+        function resetGraphState() { nodes = []; links = []; nodeIdCounter = 0; currentRootId = null; currentProjectName = 'Untitled Notework'; isProjectFromFile = false; projectNameSpan.textContent = currentProjectName; searchInput.value = ''; update(); saveToLocal(); }
+        document.getElementById('new-project').addEventListener('click', () => { showConfirm(resetGraphState, "Create a new notework? Any unsaved changes will be lost."); });
+        document.getElementById('save-project').addEventListener('click', () => {
+            const currentName = currentProjectName.replace(/\.synapse$|\.json$/i, '');
+            let filename = prompt("Enter a filename for your notework:", currentName);
+            if (filename) {
+                currentProjectName = filename;
+                projectNameSpan.textContent = currentProjectName;
+                isProjectFromFile = true;
+                if (!filename.toLowerCase().endsWith('.synapse')) {
+                    filename += '.synapse';
+                }
+                exportGraph(filename);
+            }
+        });
+        document.getElementById('open-project-input').addEventListener('change', (event) => { const file = event.target.files[0]; if (!file) return; currentProjectName = file.name.replace(/\.synapse$|\.json$/i, ''); projectNameSpan.textContent = currentProjectName; importGraph(event); });
+        function saveToLocal() { try { const graphData = { nodes: nodes.map(n => ({...n, fx: null, fy: null})), links: links.map(l => ({ source: l.source.id, target: l.target.id, direction: l.direction, type: l.type })), nodeIdCounter, currentRootId, currentProjectName, isProjectFromFile }; localStorage.setItem('synapse-graph-autosave', JSON.stringify(graphData)); } catch (e) { console.error("Failed to save to localStorage", e); } }
+        function loadFromLocal() { try { const savedData = localStorage.getItem('synapse-graph-autosave'); if (savedData) { const graphData = JSON.parse(savedData); nodes = graphData.nodes.map(n => ({...n, attachments: n.attachments || []})) || []; nodeIdCounter = graphData.nodeIdCounter || 0; currentProjectName = graphData.currentProjectName || 'Untitled Notework'; isProjectFromFile = graphData.isProjectFromFile || false; projectNameSpan.textContent = currentProjectName; const nodeMap = new Map(nodes.map(n => [n.id, n])); links = (graphData.links || []).map(l => ({ source: nodeMap.get(l.source), target: nodeMap.get(l.target), direction: l.direction || 'to', type: l.type || 'manual' })).filter(l => l.source && l.target); currentRootId = graphData.currentRootId || (nodes.length > 0 ? nodes[0].id : null); } } catch (e) { console.error("Failed to load from localStorage", e); nodes = []; links = []; } }
+        function exportGraph(filename = 'synapse-notework.synapse') { try { const graphData = { nodes: nodes.map(n => ({...n, fx: null, fy: null, x: n.x, y: n.y })), links: links.map(l => ({ source: l.source.id, target: l.target.id, direction: l.direction, type: l.type })), nodeIdCounter, currentRootId, currentProjectName }; const dataStr = JSON.stringify(graphData, null, 2); const blob = new Blob([dataStr], {type: "application/json"}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); } catch (e) { console.error("Failed to export graph", e); } }
+        function importGraph(event) { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = function(e) { try { const graphData = JSON.parse(e.target.result); if (graphData && Array.isArray(graphData.nodes) && Array.isArray(graphData.links)) { showConfirm(() => { nodes = graphData.nodes.map(n => ({...n, attachments: n.attachments || []})) || []; nodeIdCounter = graphData.nodeIdCounter || 0; isProjectFromFile = true; const nodeMap = new Map(nodes.map(n => [n.id, n])); links = (graphData.links || []).map(l => ({ source: nodeMap.get(l.source), target: nodeMap.get(l.target), direction: l.direction || 'to', type: l.type || 'manual' })).filter(l => l.source && l.target); currentRootId = graphData.currentRootId || (nodes.length > 0 ? nodes[0].id : null); updateAllMarkdownLinks(); update(); applyCurrentLayout(); fitView(); event.target.value = ''; }, "Importing will overwrite the current notework. Continue?"); } else { throw new Error("Invalid file format."); } } catch (error) { console.error("Failed to import graph:", error); event.target.value = ''; } }; reader.readAsText(file); }
+        
+        // ===================================
+        // MODALS & PANELS
+        // ===================================
+        function showModal(id, content) {
+            const modalWrapper = document.createElement('div');
+            modalWrapper.id = id;
+            modalWrapper.className = 'fixed inset-0 z-50 flex items-center justify-center p-4';
+            modalWrapper.style.backgroundColor = 'var(--bg-backdrop)';
+            modalWrapper.style.transform = 'translateZ(0)'; // Z-index fix
+            
+            const contentContainer = document.createElement('div');
+            contentContainer.className = 'relative'; 
+            contentContainer.innerHTML = content;
+
+            modalWrapper.appendChild(contentContainer);
+            modalContainer.appendChild(modalWrapper);
+            
+            let mousedownTarget = null;
+            modalWrapper.addEventListener('mousedown', (e) => { mousedownTarget = e.target; });
+            modalWrapper.addEventListener('click', (e) => {
+                if (e.target === modalWrapper && mousedownTarget === modalWrapper) {
+                    closeModal(modalWrapper);
+                    if (id === 'node-modal') activeNodeEditing = null;
+                    if (id === 'reader-modal') activeNodeReading = null;
+                }
+            });
+
+            return modalWrapper;
+        }
+
+        function closeModal(modalElement) { if (modalElement) modalElement.remove(); }
+        function showConfirm(callback, message = "This action cannot be undone.") {
+            const modal = showModal('confirm-modal', `
+                <div class="bg-ui rounded-xl shadow-xl p-6 w-full max-w-md border border-border modal-enter">
+                    <h2 class="text-xl font-bold mb-4">Are you sure?</h2>
+                    <p class="text-secondary mb-8">${message}</p>
+                    <div class="flex justify-end space-x-3">
+                        <button id="confirm-cancel" class="ui-button px-4 py-2 font-semibold rounded-lg">Cancel</button>
+                        <button id="confirm-ok" class="ui-button px-4 py-2 font-semibold rounded-lg bg-red-600 text-white border-red-600 hover:bg-red-700">Confirm</button>
+                    </div>
+                </div>`);
+            modal.querySelector('#confirm-ok').onclick = () => { if (callback) callback(); closeModal(modal); };
+            modal.querySelector('#confirm-cancel').onclick = () => closeModal(modal);
+        }
+        
+        function hideEdgeEditPanel() {
+            edgeEditPanel.classList.add('hidden');
+            if (selectedLink) {
+                link.filter(d => d === selectedLink)
+                    .classed('selected', false)
+                    .attr('marker-start', l => (l.direction === 'from' || l.direction === 'both') ? 'url(#arrowhead-start)' : null)
+                    .attr('marker-end', l => (l.direction === 'to' || l.direction === 'both') ? 'url(#arrowhead)' : null);
+                selectedLink = null;
+            }
+        }
+        function updateEdgeEditPanelButtons() { if (!selectedLink) return; const direction = selectedLink.direction || 'to'; edgeEditPanel.querySelectorAll('#edge-controls-manual .ui-button').forEach(btn => btn.classList.remove('active')); if (direction === 'to') edgeEditPanel.querySelector('#edge-dir-to').classList.add('active'); else if (direction === 'from') edgeEditPanel.querySelector('#edge-dir-from').classList.add('active'); else if (direction === 'both') edgeEditPanel.querySelector('#edge-dir-both').classList.add('active'); }
+        edgeEditPanel.querySelector('#edge-dir-to').addEventListener('click', () => { if (selectedLink) { selectedLink.direction = 'to'; update(); updateEdgeEditPanelButtons(); }});
+        edgeEditPanel.querySelector('#edge-dir-from').addEventListener('click', () => { if (selectedLink) { selectedLink.direction = 'from'; update(); updateEdgeEditPanelButtons(); }});
+        edgeEditPanel.querySelector('#edge-dir-both').addEventListener('click', () => { if (selectedLink) { selectedLink.direction = 'both'; update(); updateEdgeEditPanelButtons(); }});
+        edgeEditPanel.querySelector('#edge-delete').addEventListener('click', () => { if (selectedLink && selectedLink.type === 'manual') { links = links.filter(l => l !== selectedLink); hideEdgeEditPanel(); update(); }});
+        
+        // ===================================
+        // EVENT LISTENERS & INITIALIZATION
+        // ===================================
+        document.getElementById('toggle-manual-links').addEventListener('click', (e) => { edgeVisibility.manual = !edgeVisibility.manual; e.target.classList.toggle('active', edgeVisibility.manual); update(); });
+        document.getElementById('toggle-markdown-links').addEventListener('click', (e) => { edgeVisibility.markdown = !edgeVisibility.markdown; e.target.classList.toggle('active', edgeVisibility.markdown); update(); });
+        document.getElementById('center-view-btn').addEventListener('click', () => fitView());
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { if(!document.getElementById('node-modal') && !document.getElementById('reader-modal')) { cancelEdgeSelection(); } } });
+        Object.keys(layoutButtons).forEach(layoutId => { 
+            layoutButtons[layoutId].addEventListener('click', () => { 
+                currentLayout = layoutId; 
+                Object.values(layoutButtons).forEach(btn => btn.classList.remove('active')); 
+                layoutButtons[layoutId].classList.add('active'); 
+                if (['hierarchical'].includes(layoutId)) { 
+                    showActionHelper("Right-click a node to set it as the layout root."); 
+                } else if(selectedNodeForEdge) { 
+                    /* Keep showing connection helper */ 
+                } else { 
+                    hideActionHelper(); 
+                }
+                if (layoutId !== 'force') {
+                    simulation.alpha(0).stop();
+                }
+                applyCurrentLayout(); 
+            }); 
+        });
+        svg.on('click', (event) => { if (event.target.isEqualNode(svg.node())) { hideEdgeEditPanel(); if (selectedNodeForEdge) { cancelEdgeSelection(); } else { const [x, y] = d3.pointer(event, container.node()); nodeIdCounter++; const newNode = {id: nodeIdCounter, x, y, name: `Node ${nodeIdCounter}`, content: '', attachments: []}; nodes.push(newNode); if (currentRootId === null) currentRootId = newNode.id; update(); } } });
+        document.getElementById('about-toggle').addEventListener('click', () => openAboutModal());
+        document.getElementById('layout-panel-toggle').addEventListener('click', () => document.getElementById('layout-panel').classList.toggle('hidden'));
+
+
+        window.onload = () => {
+            const savedTheme = localStorage.getItem('synapse-theme') || 'warm';
+            applyTheme(savedTheme);
+            loadFromLocal();
+            if (nodes.length === 0) {
+                nodeIdCounter = 1;
+                nodes.push({ id: 1, x: width / 2, y: height / 2, name: `My First Node`, content: '# Welcome to Synapse!\n\nThis is your networked notebook. Here are some tips:\n\n- Hover over this node to see actions.\n- Create another node and type [[My First Node]] to see a text link appear!\n- Drag the background to pan & scroll to zoom.', attachments: ["https://placehold.co/600x400/C76A36/FFFFFF?text=Welcome!"] });
+                currentRootId = 1;
+            }
+            updateAllMarkdownLinks();
+            layoutButtons[currentLayout].classList.add('active');
+            update();
+            applyCurrentLayout();
+
+            const hideWelcome = localStorage.getItem('synapse-hide-welcome');
+            if (hideWelcome !== 'true') {
+                showWelcomeTutorial();
+            }
+        };
+
+        window.onresize = () => {
+            width = svg.node().getBoundingClientRect().width;
+            height = svg.node().getBoundingClientRect().height;
+            simulation.force("center", d3.forceCenter(width / 2, height / 2));
+            if (nodes.length > 0) applyCurrentLayout();
+        };
+
+    </script>
+    <script>
+        // =========================================================
+        // FULL FUNCTION DEFINITIONS (to keep main script clean)
+        // =========================================================
+
+        function extractImageUrls(nodeData) {
+            const urls = new Set();
+            // From attachments
+            (nodeData.attachments || []).forEach(url => {
+                if (isImageUrl(url)) {
+                    urls.add(url);
+                }
+            });
+            // From markdown content
+            if (nodeData.content) {
+                const markdownImageRegex = /!\[.*?\]\((.*?)\)/g;
+                let match;
+                while ((match = markdownImageRegex.exec(nodeData.content)) !== null) {
+                    urls.add(match[1]);
+                }
+            }
+            return Array.from(urls);
+        }
+
+        function saveNodeFromModal(modal, nodeId) {
+            const node = nodes.find(n => n.id === nodeId);
+            if (!node) return;
+
+            const nodeNameInput = modal.querySelector('#node-name');
+            const nodeContentTextarea = modal.querySelector('#node-content');
+            const attachmentsList = modal.querySelector('#attachments-list');
+
+            if (!nodeNameInput || !nodeContentTextarea || !attachmentsList) {
+                console.error("Could not find modal elements to save from.");
+                return;
+            }
+
+            const oldName = node.name;
+            const newName = nodeNameInput.value;
+            node.name = newName;
+            node.content = nodeContentTextarea.value;
+            node.attachments = Array.from(attachmentsList.querySelectorAll('[data-url]')).map(item => item.dataset.url);
+
+            if (oldName.trim().toLowerCase() !== newName.trim().toLowerCase()) {
+                updateAllMarkdownLinks();
+            } else {
+                // Just update links for the current node if name hasn't changed
+                links = links.filter(l => !(l.source.id === nodeId && l.type === 'markdown'));
+                const newMarkdownLinks = parseMarkdownLinks(node);
+                links.push(...newMarkdownLinks);
+            }
+        }
+
+        // MODIFICATION: Added function to handle clicks on internal [[...]] links
+        function addInternalLinkListeners(containerElement) {
+            containerElement.addEventListener('click', e => {
+                const link = e.target.closest('.internal-link');
+                if (!link) return;
+
+                e.preventDefault();
+                const nodeName = link.textContent.trim();
+                const targetNode = nodes.find(n => n.name.trim().toLowerCase() === nodeName.toLowerCase());
+
+                if (targetNode) {
+                    const currentReaderModal = document.getElementById('reader-modal');
+                    const currentEditModal = document.getElementById('node-modal');
+
+                    // If we're clicking a link inside the reader for the same node, do nothing.
+                    if (activeNodeReading && activeNodeReading.id === targetNode.id) {
+                        return;
+                    }
+
+                    if (currentReaderModal) {
+                        closeModal(currentReaderModal);
+                        activeNodeReading = null;
+                    }
+                    if (currentEditModal) {
+                        closeModal(currentEditModal);
+                        activeNodeEditing = null;
+                    }
+                    
+                    // A small delay to allow the old modal to fully close, preventing UI flashes
+                    setTimeout(() => {
+                        openMarkdownReaderModal(targetNode);
+                    }, 50); 
+                } else {
+                    showConfirm(() => {
+                        const sourceNode = activeNodeReading || activeNodeEditing;
+                        const currentEditModal = document.getElementById('node-modal');
+
+                        // If we were editing a node, save its contents first.
+                        if (activeNodeEditing && currentEditModal) {
+                            saveNodeFromModal(currentEditModal, activeNodeEditing.id);
+                        }
+
+                        const currentReaderModal = document.getElementById('reader-modal');
+                        if (currentReaderModal) closeModal(currentReaderModal);
+                        if (currentEditModal) closeModal(currentEditModal);
+
+                        activeNodeReading = null;
+                        activeNodeEditing = null;
+                        
+                        nodeIdCounter++;
+                        const newNode = {
+                            id: nodeIdCounter,
+                            x: sourceNode ? sourceNode.x + Math.random() * 200 - 100 : width / 2,
+                            y: sourceNode ? sourceNode.y + Math.random() * 200 - 100 : height / 2,
+                            name: nodeName,
+                            content: '',
+                            attachments: []
+                        };
+                        nodes.push(newNode);
+                        
+                        // We must call updateAllMarkdownLinks here so the original link now works
+                        updateAllMarkdownLinks();
+                        update();
+                        
+                        setTimeout(() => openNodeModal(newNode), 100);
+
+                    }, `Node "${nodeName}" does not exist. Create it?`);
+                }
+            });
+        }
+
+        function openNodeModal(nodeData) {
+            activeNodeEditing = nodeData;
+            const modal = showModal('node-modal', `
+                <div class="bg-ui rounded-xl shadow-xl w-[95vw] max-w-[1600px] h-[90vh] border border-border modal-enter flex flex-col">
+                    <div class="flex flex-col md:flex-row gap-6 p-6 sm:px-8 sm:py-6 flex-1 min-h-0">
+                        <!-- Left side -->
+                        <div class="w-full md:w-1/2 flex flex-col">
+                            <div class="pb-4 mb-4 border-b border-border">
+                                <input type="text" id="node-name" class="text-2xl sm:text-3xl font-bold w-full bg-transparent focus:outline-none p-0 m-0 border-none focus:ring-0" style="font-family: var(--font-body);" placeholder="What's this idea called?">
+                            </div>
+                            <div class="flex-shrink-0 border-b border-border">
+                                <nav class="flex space-x-4" id="modal-tabs">
+                                    <button data-tab="content" class="px-1 pb-2 text-base font-medium border-b-2 border-transparent hover:text-primary transition-colors">Content</button>
+                                    <button data-tab="attachments" class="px-1 pb-2 text-base font-medium border-b-2 border-transparent hover:text-primary transition-colors">Attachments</button>
+                                    <button data-tab="connections" class="px-1 pb-2 text-base font-medium border-b-2 border-transparent hover:text-primary transition-colors">Manual Links</button>
+                                </nav>
+                            </div>
+                            <!-- Tab Panels -->
+                            <div class="flex-1 min-h-0 mt-4">
+                                <div id="tab-content" class="h-full flex flex-col">
+                                    <textarea id="node-content" class="ui-textarea block w-full h-full rounded-md text-lg leading-relaxed p-4" style="font-family: var(--font-body); resize: none;" placeholder="Type content here. Use [[Node Name]] to link to other nodes."></textarea>
+                                </div>
+                                <div id="tab-attachments" class="hidden h-full flex flex-col">
+                                    <div class="flex-1 space-y-2 overflow-y-auto mb-3 pr-2" id="attachments-list"></div>
+                                    <div class="flex gap-2">
+                                        <input type="text" id="attachment-input" placeholder="Paste a URL and press Enter..." class="ui-input flex-grow min-w-0 rounded-md text-base p-3">
+                                        <button id="add-attachment-btn" class="ui-button-accent px-4 font-semibold rounded-md">Add</button>
+                                    </div>
+                                </div>
+                                <div id="tab-connections" class="hidden h-full flex flex-col">
+                                    <div class="flex-1 space-y-2 overflow-y-auto mb-2 pr-2" id="connections-list"></div>
+                                    <div class="flex gap-2">
+                                        <select id="add-connection-select" class="ui-select flex-grow min-w-0 rounded-md text-base p-3"></select>
+                                        <button id="add-connection-btn" class="ui-button-accent px-4 font-semibold rounded-md">Connect</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Right side -->
+                        <div class="w-full md:w-1/2 flex flex-col min-h-0">
+                            <label class="block text-sm font-medium text-secondary mb-2 flex-shrink-0">Live Preview</label>
+                            <div id="markdown-preview" class="preview-content flex-1 border border-border rounded-md p-4 overflow-y-auto" style="background-color: var(--bg-ui);"></div>
+                        </div>
+                    </div>
+                    <div class="p-6 sm:px-8 sm:py-4 border-t border-border flex justify-between items-center flex-shrink-0">
+                        <div class="flex items-center gap-4">
+                            <button id="modal-delete-node" class="ui-button px-5 py-2.5 font-semibold rounded-lg hover:bg-red-500 hover:text-white hover:border-red-500">Delete Node</button>
+                            <button id="modal-read-view" class="ui-button px-5 py-2.5 font-semibold rounded-lg">Read View</button>
+                            <button id="modal-download-node" title="Download as Markdown" class="ui-button p-2.5 rounded-lg">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            </button>
+                        </div>
+                        <div class="flex space-x-4">
+                            <button id="modal-cancel" class="ui-button px-5 py-2.5 font-semibold rounded-lg">Cancel</button>
+                            <button id="modal-save" class="ui-button-accent px-5 py-2.5 font-semibold rounded-lg">Save</button>
+                        </div>
+                    </div>
+                </div>`);
+            
+            const nodeNameInput = modal.querySelector('#node-name');
+            const nodeContentTextarea = modal.querySelector('#node-content');
+            const markdownPreview = modal.querySelector('#markdown-preview');
+            const attachmentInput = modal.querySelector('#attachment-input');
+            const attachmentsList = modal.querySelector('#attachments-list');
+            const connectionsList = modal.querySelector('#connections-list');
+            const addConnectionSelect = modal.querySelector('#add-connection-select');
+            
+            function updateLivePreview() { 
+                const content = nodeContentTextarea.value;
+                markdownPreview.innerHTML = mdConverter.makeHtml(content); 
+                Prism.highlightAllUnder(markdownPreview);
+            }
+
+            function addAttachmentToModalList(url) {
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between bg-ui-hover p-2 rounded-md text-sm min-w-0';
+                item.dataset.url = url;
+
+                let previewHTML = '';
+                if (isImageUrl(url)) {
+                    previewHTML = `<img src="${url}" class="w-12 h-10 object-cover rounded flex-shrink-0" onerror="this.parentElement.style.display='none'">`;
+                } else {
+                    previewHTML = `<div class="w-12 h-10 bg-main rounded flex-shrink-0 flex items-center justify-center text-secondary text-xl">${ICONS.attachment}</div>`;
+                }
+                
+                item.innerHTML = `
+                    <a href="${url}" target="_blank" rel="noopener noreferrer" class="flex items-center gap-3 min-w-0 text-primary no-underline w-full">
+                        ${previewHTML}
+                        <span class="truncate" title="${url}">${url}</span>
+                    </a>
+                    <button class="remove-btn text-red-500 hover:text-red-700 font-bold ml-2 flex-shrink-0 text-2xl leading-none">&times;</button>
+                `;
+                item.querySelector('.remove-btn').onclick = () => item.remove();
+                attachmentsList.appendChild(item);
+            }
+
+            function populateConnectionsList(nodeId) {
+                connectionsList.innerHTML = '';
+                const connectedLinks = links.filter(l => l.type === 'manual' && (l.source.id === nodeId || l.target.id === nodeId));
+                if (connectedLinks.length === 0) { connectionsList.innerHTML = `<span class="text-sm italic text-secondary">No manual links. Text links are managed via [[...]] syntax in the content.</span>`; return; }
+                connectedLinks.forEach(link => {
+                    const otherNode = link.source.id === nodeId ? link.target : link.source;
+                    const isEditingNodeSource = link.source.id === nodeId;
+                    const direction = link.direction || 'to';
+                    const item = document.createElement('div');
+                    item.className = 'flex items-center justify-between bg-ui-hover p-2 rounded-md text-sm min-w-0';
+                    const toThisDir = isEditingNodeSource ? 'from' : 'to';
+                    const fromThisDir = isEditingNodeSource ? 'to' : 'from';
+                    item.innerHTML = `<span class="truncate" title="${otherNode.name}">${otherNode.name}</span><div class="flex items-center gap-1"><button title="Direction: To this node" data-dir="${toThisDir}" class="ui-button text-sm p-1 border-none ${direction === toThisDir ? 'active': ''}">←</button><button title="Direction: Bidirectional" data-dir="both" class="ui-button text-sm p-1 border-none ${direction === 'both' ? 'active': ''}">↔</button><button title="Direction: From this node" data-dir="${fromThisDir}" class="ui-button text-sm p-1 border-none ${direction === fromThisDir ? 'active': ''}">→</button><button class="remove-btn text-red-500 hover:text-red-700 font-bold ml-2">&times;</button></div>`;
+                    item.querySelectorAll('.ui-button').forEach(btn => { btn.onclick = () => { link.direction = btn.dataset.dir; update(); populateConnectionsList(nodeId); }; });
+                    item.querySelector('.remove-btn').onclick = () => { links = links.filter(l => l !== link); update(); populateConnectionsList(nodeId); populateAddConnectionSelect(nodeId); };
+                    connectionsList.appendChild(item);
+                });
+            }
+
+            function populateAddConnectionSelect(nodeId) {
+                const connectedNodeIds = new Set(links.filter(l => l.type === 'manual' && (l.source.id === nodeId || l.target.id === nodeId)).map(l => l.source.id === nodeId ? l.target.id : l.source.id));
+                const availableNodes = nodes.filter(n => n.id !== nodeId && !connectedNodeIds.has(n.id));
+                addConnectionSelect.innerHTML = availableNodes.map(n => `<option value="${n.id}">${n.name}</option>`).join('');
+                addConnectionSelect.disabled = availableNodes.length === 0;
+                modal.querySelector('#add-connection-btn').disabled = availableNodes.length === 0;
+            }
+
+            nodeNameInput.value = nodeData.name || '';
+            nodeContentTextarea.value = nodeData.content || '';
+            (nodeData.attachments || []).forEach(url => addAttachmentToModalList(url));
+            populateConnectionsList(nodeData.id);
+            populateAddConnectionSelect(nodeData.id);
+            updateLivePreview();
+            
+            // MODIFICATION: Add listener for internal links in the preview pane
+            addInternalLinkListeners(markdownPreview);
+
+            modal.querySelector('#modal-read-view').onclick = () => {
+                closeModal(modal);
+                activeNodeEditing = null;
+                openMarkdownReaderModal(nodeData);
+            };
+            nodeContentTextarea.addEventListener('input', updateLivePreview);
+            modal.querySelector('#add-attachment-btn').onclick = () => { if (attachmentInput.value) { try { new URL(attachmentInput.value); addAttachmentToModalList(attachmentInput.value); attachmentInput.value = ''; } catch(e) { console.error("Invalid URL"); } } };
+            attachmentInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); modal.querySelector('#add-attachment-btn').click(); }});
+            modal.querySelector('#add-connection-btn').onclick = () => { const targetNodeId = parseInt(addConnectionSelect.value); if (!targetNodeId || !activeNodeEditing) return; links.push({ source: activeNodeEditing, target: nodes.find(n=>n.id === targetNodeId), direction: 'to', type: 'manual' }); update(); populateConnectionsList(activeNodeEditing.id); populateAddConnectionSelect(activeNodeEditing.id); };
+            modal.querySelector('#modal-cancel').onclick = () => { closeModal(modal); activeNodeEditing = null; };
+            modal.querySelector('#modal-delete-node').onclick = () => { showConfirm(() => { deleteNode(activeNodeEditing.id); closeModal(modal); activeNodeEditing = null; }, `Delete "${activeNodeEditing.name}"?`); };
+            modal.querySelector('#modal-download-node').onclick = () => { downloadMarkdown(nodeContentTextarea.value, nodeNameInput.value); };
+            modal.querySelector('#modal-save').onclick = () => {
+                if (activeNodeEditing) {
+                    saveNodeFromModal(modal, activeNodeEditing.id);
+                }
+                closeModal(modal);
+                activeNodeEditing = null;
+                update();
+            };
+            
+            const tabsContainer = modal.querySelector('#modal-tabs');
+            const tabPanels = { content: modal.querySelector('#tab-content'), attachments: modal.querySelector('#tab-attachments'), connections: modal.querySelector('#tab-connections'), };
+            tabsContainer.querySelectorAll('button').forEach(btn => {
+                btn.onclick = (e) => {
+                    const tabName = e.target.dataset.tab;
+                    tabsContainer.querySelectorAll('button').forEach(tab => {tab.classList.remove('active', 'border-border-focus', 'text-primary'); tab.classList.add('text-secondary'); });
+                    e.target.classList.add('active', 'border-border-focus', 'text-primary');
+                    Object.values(tabPanels).forEach(panel => panel.classList.add('hidden'));
+                    tabPanels[tabName].classList.remove('hidden');
+                };
+            });
+            tabsContainer.querySelector('button[data-tab="content"]').click();
+        }
+
+        function openMarkdownReaderModal(nodeData) {
+            activeNodeReading = nodeData;
+            const allAttachments = nodeData.attachments || [];
+            const imageAttachments = allAttachments.filter(isImageUrl);
+            const otherAttachments = allAttachments.filter(url => !isImageUrl(url));
+            
+            // --- Build Tabs ---
+            let tabsHTML = '<button data-tab="markdown" class="reader-tab-btn active px-3 py-2 text-base font-medium rounded-t-md">Markdown</button>';
+            if (imageAttachments.length > 0) {
+                tabsHTML += `<button data-tab="images" class="reader-tab-btn px-3 py-2 text-base font-medium rounded-t-md">Images (${imageAttachments.length})</button>`;
+            }
+            if (otherAttachments.length > 0) {
+                tabsHTML += `<button data-tab="other" class="reader-tab-btn px-3 py-2 text-base font-medium rounded-t-md">Files (${otherAttachments.length})</button>`;
+            }
+
+            // --- Build Tab Panels ---
+            const imagesPanelHTML = imageAttachments.length > 0 ? `
+                <div id="reader-tab-images" class="reader-tab-panel hidden absolute inset-0 overflow-y-auto p-4">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                        ${imageAttachments.map((url, index) => `
+                            <button data-index="${index}" class="image-carousel-trigger block border border-border rounded-lg overflow-hidden hover:border-border-focus transition-colors aspect-square bg-main focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-border-focus">
+                                <img src="${url}" alt="Attachment" class="w-full h-full object-cover" onerror="this.parentElement.style.display='none'">
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>` : '';
+
+            const otherPanelHTML = otherAttachments.length > 0 ? `
+                <div id="reader-tab-other" class="reader-tab-panel hidden absolute inset-0 overflow-y-auto p-4">
+                    <ul class="space-y-2">
+                        ${otherAttachments.map(url => `
+                            <li>
+                                <a href="${url}" target="_blank" rel="noopener noreferrer" class="flex items-center gap-3 p-3 bg-main rounded-md border border-border hover:border-border-focus transition-colors">
+                                    <span class="text-secondary">${ICONS.attachment}</span>
+                                    <span class="truncate text-primary text-sm">${url}</span>
+                                </a>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>` : '';
+
+            const modal = showModal('reader-modal', `
+                <div class="bg-ui rounded-xl shadow-xl w-[95vw] max-w-screen-2xl h-[90vh] border border-border modal-enter flex flex-col">
+                    <div class="px-4 sm:px-6 py-4 flex-shrink-0 flex justify-between items-center border-b border-border">
+                        <h2 class="text-2xl font-bold truncate pr-4" style="font-family: var(--font-body);">${nodeData.name}</h2>
+                        <button id="reader-download-btn" title="Download as Markdown" class="ui-button p-2 rounded-lg flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        </button>
+                    </div>
+                    <div class="flex-1 min-h-0 flex flex-col">
+                         <div class="px-4 sm:px-6 pt-2 border-b border-border">
+                             <nav id="reader-tabs" class="flex -mb-px space-x-2">${tabsHTML}</nav>
+                         </div>
+                         <div class="flex-1 min-h-0 relative" style="background-color: var(--bg-ui);">
+                             <div id="reader-tab-markdown" class="reader-tab-panel absolute inset-0 overflow-y-auto p-6 sm:p-8">
+                                 <div class="preview-content text-lg max-w-5xl mx-auto">
+                                     ${mdConverter.makeHtml(nodeData.content || '<em>No content available.</em>')}
+                                 </div>
+                             </div>
+                             ${imagesPanelHTML}
+                             ${otherPanelHTML}
+                         </div>
+                    </div>
+                    <div class="p-6 sm:px-8 sm:py-4 border-t border-border flex justify-end items-center flex-shrink-0 space-x-4">
+                        <button id="reader-edit-btn" class="ui-button px-5 py-2.5 font-semibold rounded-lg">Edit Node</button>
+                        <button id="reader-close-btn" class="ui-button-accent px-5 py-2.5 font-semibold rounded-lg">Close</button>
+                    </div>
+                </div>`);
+            
+            // MODIFICATION: Add listener for internal links in the reader content
+            const previewContent = modal.querySelector('.preview-content');
+            addInternalLinkListeners(previewContent);
+            Prism.highlightAllUnder(previewContent);
+            
+             // --- Tab Logic ---
+            const tabsNav = modal.querySelector('#reader-tabs');
+            const tabPanels = {
+                markdown: modal.querySelector('#reader-tab-markdown'),
+                images: modal.querySelector('#reader-tab-images'),
+                other: modal.querySelector('#reader-tab-other'),
+            };
+
+            tabsNav.addEventListener('click', (e) => {
+                const button = e.target.closest('button');
+                if (!button) return;
+                const tabName = button.dataset.tab;
+                
+                tabsNav.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                
+                Object.values(tabPanels).forEach(panel => {
+                    if (panel) panel.classList.add('hidden');
+                });
+                if(tabPanels[tabName]) tabPanels[tabName].classList.remove('hidden');
+            });
+
+            // --- Carousel Trigger Logic ---
+            modal.querySelectorAll('.image-carousel-trigger').forEach(trigger => {
+                trigger.addEventListener('click', () => {
+                    const index = parseInt(trigger.dataset.index, 10);
+                    openImageCarouselModal(imageAttachments, index);
+                });
+            });
+
+            modal.querySelector('#reader-download-btn').onclick = () => { downloadMarkdown(nodeData.content, nodeData.name); };
+            modal.querySelector('#reader-edit-btn').onclick = () => { closeModal(modal); activeNodeReading = null; openNodeModal(nodeData); };
+            modal.querySelector('#reader-close-btn').onclick = () => { closeModal(modal); activeNodeReading = null; };
+        }
+        
+        function openAboutModal() {
+            const modal = showModal('about-modal', `
+                <div class="bg-ui rounded-xl shadow-xl p-10 sm:p-12 w-full max-w-2xl border border-border modal-enter flex flex-col text-center">
+                    <h2 class="text-3xl font-bold mb-4" style="font-family: var(--font-ui);">Synapse</h2>
+                    <div class="preview-content text-base space-y-4">
+                        <p>A networked notebook for visual thinking, created by Phileas Dazeley-Gaist as a passion project. It's designed to help thinkers, writers, and creators connect ideas in a fluid, graphical way.</p>
+                        <p>If you find this tool useful, consider supporting its development or checking out more work below.</p>
+                        <!-- MODIFICATION: Removed arrows from buttons -->
+                        <div class="flex flex-col sm:flex-row gap-4 mt-8">
+                            <a href="https://phileasdg.github.io/" target="_blank" rel="noopener noreferrer" class="ui-button w-full text-center py-2.5 rounded-lg no-underline font-semibold">Personal Blog</a>
+                            <a href="https://www.paypal.com/donate/?business=K74DYULZ2J&no_recurring=0&item_name=Buy+me+a+coffee+%3AD&currency_code=USD" target="_blank" rel="noopener noreferrer" class="ui-button-accent w-full text-center py-2.5 rounded-lg no-underline font-semibold">Buy me a coffee</a>
+                        </div>
+                    </div>
+                    <div class="mt-10 pt-6 border-t border-border flex justify-between items-center flex-shrink-0">
+                        <button id="show-tutorial-btn" class="ui-button px-5 py-2.5 font-semibold rounded-lg">Show Tutorial</button>
+                        <button id="about-close-btn" class="ui-button-accent px-5 py-2.5 font-semibold rounded-lg">Close</button>
+                    </div>
+                </div>
+            `);
+            modal.querySelector('#about-close-btn').onclick = () => closeModal(modal);
+            modal.querySelector('#show-tutorial-btn').onclick = () => {
+                closeModal(modal);
+                showWelcomeTutorial();
+            };
+        }
+
+        function showWelcomeTutorial() {
+            const modal = showModal('welcome-modal', `
+                <div class="bg-ui rounded-xl shadow-xl p-10 sm:p-12 w-full max-w-2xl border border-border modal-enter flex flex-col">
+                    <h2 class="font-bold text-2xl mb-4" style="font-family: var(--font-ui);">Welcome to Synapse!</h2>
+                    <p class="text-secondary mb-6">Here are a few tips to get you started with your networked notebook:</p>
+                    <ul class="space-y-4 text-secondary text-base mb-8">
+                        <li class="flex items-start gap-3"><span class="text-accent mt-1 text-lg leading-none">▸</span><p><strong class="text-primary font-semibold">Add a Node:</strong> Simply click on any empty area on the canvas.</p></li>
+                        <li class="flex items-start gap-3"><span class="text-accent mt-1 text-lg leading-none">▸</span><p><strong class="text-primary font-semibold">Create a Manual Link:</strong> Click one node, then click another to connect (or disconnect) them.</p></li>
+                        <li class="flex items-start gap-3"><span class="text-accent mt-1 text-lg leading-none">▸</span><p><strong class="text-primary font-semibold">Create a Text Link:</strong> Inside a node's editor, type \`[[Target Node Name]]\` to automatically link to another node by its title.</p></li>
+                         <li class="flex items-start gap-3"><span class="text-accent mt-1 text-lg leading-none">▸</span><p><strong class="text-primary font-semibold">Edit & View:</strong> Hover over any node to reveal action buttons for editing, adding linked nodes, and more.</p></li>
+                        <li class="flex items-start gap-3"><span class="text-accent mt-1 text-lg leading-none">▸</span><p><strong class="text-primary font-semibold">Pan & Zoom:</strong> Drag the canvas background to move your view, and use your scroll wheel to zoom in and out.</p></li>
+                    </ul>
+                    <div class="mt-auto flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="hide-welcome-checkbox" class="h-4 w-4 rounded border-border text-accent focus:ring-accent">
+                            <label for="hide-welcome-checkbox" class="text-sm text-secondary">Don't show this again</label>
+                        </div>
+                        <button id="welcome-close-btn" class="ui-button-accent px-5 py-2.5 font-semibold rounded-lg">Get Started</button>
+                    </div>
+                </div>
+            `);
+            const checkbox = modal.querySelector('#hide-welcome-checkbox');
+            modal.querySelector('#welcome-close-btn').onclick = () => {
+                if (checkbox.checked) {
+                    localStorage.setItem('synapse-hide-welcome', 'true');
+                }
+                closeModal(modal);
+            };
+        }
+
+        function openImageCarouselModal(imageUrls, startIndex = 0) {
+            if (!imageUrls || imageUrls.length === 0) return;
+
+            const modalContent = `
+                <button id="carousel-close" class="absolute top-4 right-4 text-white/80 hover:text-white text-5xl font-light leading-none z-10">&times;</button>
+                <button id="carousel-prev" class="absolute left-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white text-5xl p-4 z-10 rounded-full hover:bg-white/10 transition-colors">&#10094;</button>
+                <button id="carousel-next" class="absolute right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white text-5xl p-4 z-10 rounded-full hover:bg-white/10 transition-colors">&#10095;</button>
+                <div class="relative w-full h-full flex items-center justify-center">
+                    <img id="carousel-image" src="" class="max-w-[90vw] max-h-[85vh] object-contain rounded-lg shadow-2xl">
+                    <div id="carousel-counter" class="absolute bottom-4 text-white/80 text-lg bg-black/30 px-3 py-1 rounded-md"></div>
+                </div>
+            `;
+            
+            const modalWrapper = document.createElement('div');
+            modalWrapper.id = 'image-carousel-modal';
+            modalWrapper.className = 'fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black modal-enter';
+            modalWrapper.innerHTML = modalContent;
+            modalContainer.appendChild(modalWrapper);
+            
+            let currentIndex = startIndex;
+            const imgElement = modalWrapper.querySelector('#carousel-image');
+            const counterElement = modalWrapper.querySelector('#carousel-counter');
+            const prevBtn = modalWrapper.querySelector('#carousel-prev');
+            const nextBtn = modalWrapper.querySelector('#carousel-next');
+
+            function updateCarousel() {
+                imgElement.src = imageUrls[currentIndex];
+                counterElement.textContent = `${currentIndex + 1} / ${imageUrls.length}`;
+                prevBtn.style.display = imageUrls.length <= 1 ? 'none' : 'block';
+                nextBtn.style.display = imageUrls.length <= 1 ? 'none' : 'block';
+            }
+
+            modalWrapper.querySelector('#carousel-close').onclick = () => {
+                modalWrapper.remove();
+            };
+
+            prevBtn.onclick = () => {
+                currentIndex = (currentIndex - 1 + imageUrls.length) % imageUrls.length;
+                updateCarousel();
+            };
+
+            nextBtn.onclick = () => {
+                currentIndex = (currentIndex + 1) % imageUrls.length;
+                updateCarousel();
+            };
+            
+            const keyHandler = (e) => {
+                if (!document.getElementById('image-carousel-modal')) {
+                    document.removeEventListener('keydown', keyHandler);
+                    return;
+                }
+                if (e.key === 'ArrowLeft') prevBtn.click();
+                else if (e.key === 'ArrowRight') nextBtn.click();
+                else if (e.key === 'Escape') modalWrapper.querySelector('#carousel-close').click();
+            };
+            document.addEventListener('keydown', keyHandler);
+
+            updateCarousel();
+        }
+
+        function applyCurrentLayout() {
+            nodes.forEach(node => { node.fx = null; node.fy = null; });
+            if ((!currentRootId || !nodes.find(n => n.id === currentRootId)) && nodes.length > 0) { currentRootId = nodes[0].id; }
+            node.selectAll('.node-shape').classed('node-shape-root', d => d.id === currentRootId);
+            const { componentNodes } = findConnectedComponent(currentRootId);
+            switch (currentLayout) {
+                case 'force':
+                    simulation.force("center", d3.forceCenter(width / 2, height / 2)).alpha(1).restart();
+                    break;
+                case 'hierarchical':
+                    if (componentNodes.length === 0 || !currentRootId) break;
+                    const rootNodeForHierarchy = componentNodes.find(n => n.id === currentRootId);
+                    const hierarchyData = createHierarchy(rootNodeForHierarchy, componentNodes, links);
+                    if (!hierarchyData) break;
+                    const root = d3.hierarchy(hierarchyData);
+                    const treeLayout = d3.tree().nodeSize([120, 220]);
+                    treeLayout(root);
+                    root.descendants().forEach(d => { const node = nodes.find(n => n.id === d.data.id); if(node){ node.x = d.x + width / 2; node.y = d.y + height * 0.1; } });
+                    ticked();
+                    break;
+                case 'circular':
+                    const r = Math.min(width, height) / 2.5; const step = (2 * Math.PI) / nodes.length;
+                    nodes.forEach((n, i) => { n.x = width / 2 + r * Math.cos(i * step); n.y = height / 2 + r * Math.sin(i * step); });
+                    ticked();
+                    break;
+                case 'grid':
+                    const cols = Math.ceil(Math.sqrt(nodes.length)); if (cols === 0) break;
+                    const cellW = width / (cols + 1); const cellH = height / (Math.ceil(nodes.length / cols) + 1);
+                    nodes.forEach((n, i) => { n.x = (i % cols + 1) * cellW; n.y = (Math.floor(i / cols) + 1) * cellH; });
+                    ticked();
+                    break;
+            }
+            if (currentLayout !== 'force') {
+                fitView();
+            }
+        }
+
+        function createHierarchy(rootNode, nodesInComponent, allLinks) {
+            if (!rootNode) return null;
+            const adj = new Map(nodesInComponent.map(n => [n.id, []]));
+            const componentIds = new Set(nodesInComponent.map(n => n.id));
+            allLinks.forEach(link => { const sourceId = link.source.id; const targetId = link.target.id; if (componentIds.has(sourceId) && componentIds.has(targetId)) { adj.get(sourceId).push(targetId); adj.get(targetId).push(sourceId); } });
+            const rootHierarchy = { ...rootNode, children: [] };
+            const queue = [rootHierarchy]; const visited = new Set([rootHierarchy.id]);
+            while (queue.length > 0) {
+                const uNode = queue.shift();
+                for (const v_id of adj.get(uNode.id) || []) {
+                    if (!visited.has(v_id)) {
+                        visited.add(v_id);
+                        const originalVNode = nodesInComponent.find(n => n.id === v_id);
+                        if (originalVNode) { const vHierarchyNode = { ...originalVNode, children: [] }; uNode.children.push(vHierarchyNode); queue.push(vHierarchyNode); }
+                    }
+                }
+            }
+            return rootHierarchy;
+        }
+
+        function findConnectedComponent(startNodeId) { 
+            if (!startNodeId || nodes.length === 0) return { componentNodes: []}; 
+            const startNode = nodes.find(n => n.id === startNodeId); 
+            if (!startNode) return { componentNodes: []}; 
+            const componentNodes = new Map(); 
+            const queue = [startNode]; 
+            const visited = new Set([startNode.id]); 
+            while(queue.length > 0) { 
+                const currentNode = queue.shift(); 
+                componentNodes.set(currentNode.id, currentNode); 
+                links.forEach(link => { 
+                    const sourceId = link.source.id; const targetId = link.target.id; 
+                    if(sourceId === currentNode.id && !visited.has(targetId)) { 
+                        visited.add(targetId); queue.push(link.target); 
+                    } else if(targetId === currentNode.id && !visited.has(sourceId)) { 
+                        visited.add(sourceId); queue.push(link.source); 
+                    } 
+                }); 
+            } 
+            return { componentNodes: Array.from(componentNodes.values()) }; 
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js" xintegrity="sha512-9khQRAUBomBC5/3mEhmGTBtm3rVLjdBOAoOKJBJxrrKaxtN0Uo+IgrT5s7WOLpy35CLrqS/jHyeI/U3C3blU5A==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js" xintegrity="sha512-S_2_LMwU2SjnoF8pNtH/K2DEsPBOsPq7vLqfU+eBfDdQvjTslmxlns9R/2L5g8/hL2QxV/T0J2WXzSAfU/g+2g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</body>
+</html>
