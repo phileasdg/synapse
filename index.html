@@ -142,8 +142,9 @@
 
         .node-action-button { cursor: pointer; transition: all 0.2s ease-in-out; border-radius: 50%; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; user-select: none; border: 1px solid var(--border); background-color: var(--bg-ui); color: var(--text-secondary); box-shadow: 0 2px 4px -1px var(--shadow-color); opacity: 0; pointer-events: none; transform: scale(0.8); }
         
-        /* FIX: Show action buttons on hover (desktop) OR when selected (touch) */
+        /* FIX: Show action buttons on hover (desktop) OR when selected (touch). Added .hovered for Safari. */
         .node:hover .node-action-button, 
+        .node.hovered .node-action-button,
         .node.selected .node-action-button,
         .node.pending-connection .node-action-button { 
             opacity: 1; pointer-events: auto; transform: scale(1); 
@@ -161,8 +162,9 @@
             opacity: 0; pointer-events: none; transform: scale(0.8); 
         }
 
-        /* FIX: Show preview button on hover (desktop) OR when selected (touch) */
+        /* FIX: Show preview button on hover (desktop) OR when selected (touch). Added .hovered for Safari. */
         .node:hover .node-preview-button,
+        .node.hovered .node-preview-button,
         .node.selected .node-preview-button { 
             opacity: 1; pointer-events: auto; transform: scale(1); 
         }
@@ -226,6 +228,11 @@
         #layout-panel, #edge-edit-panel {
             transform: translateZ(0); /* Promotes to a new layer for z-index consistency */
             background-color: var(--bg-ui);
+        }
+        
+        /* FIX: Set action helper background to match input fields */
+        #action-helper-bar {
+            background-color: var(--bg-input);
         }
     </style>
 </head>
@@ -300,7 +307,7 @@
     <!-- Main SVG Canvas -->
     <main class="flex-1 relative z-10">
         <svg id="network-canvas" class="w-full h-full cursor-grab"></svg>
-        <div id="action-helper-bar" class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-ui text-primary px-4 py-2 rounded-lg shadow-lg hidden z-20 transition-opacity border border-border text-sm"></div>
+        <div id="action-helper-bar" class="absolute bottom-4 left-1/2 -translate-x-1/2 text-primary px-4 py-2 rounded-lg shadow-lg hidden z-20 transition-opacity border border-border text-sm"></div>
     </main>
     
     <!-- Modals are inserted here by JS -->
@@ -506,7 +513,18 @@
                 .attr("filter", "url(#node-shadow)")
                 .call(drag(simulation))
                 .on("click", handleNodeClick)
-                .on("contextmenu", handleNodeRightClick);
+                .on("contextmenu", handleNodeRightClick)
+                // FIX: Add JS-driven hover for better Safari compatibility
+                .on('mouseenter', function() {
+                    if (!isTouchDevice) {
+                        d3.select(this).classed('hovered', true);
+                    }
+                })
+                .on('mouseleave', function() {
+                    if (!isTouchDevice) {
+                        d3.select(this).classed('hovered', false);
+                    }
+                });
 
             // FIX: Add long-press event for touch devices
             if (isTouchDevice) {
@@ -724,22 +742,34 @@
             }
 
             const btnPos = { x: isRect ? nodeWidth/2 + 8 : 35, y: isRect ? 0 : 0 };
-            group.append('foreignObject').attr('x', btnPos.x - 11).attr('y', btnPos.y - 38).attr('width', 22).attr('height', 22)
+            
+            // FIX: Wrap foreignObject in a <g> for transform to fix Safari positioning bug.
+            group.append('g').attr('transform', `translate(${btnPos.x - 11}, ${btnPos.y - 38})`)
+                .append('foreignObject').attr('width', 22).attr('height', 22)
                 .append('xhtml:div').attr('class', 'node-action-button add').html('＋').on('click', (e, d) => { e.stopPropagation(); addLinkedNode(d); });
-            group.append('foreignObject').attr('x', btnPos.x - 11).attr('y', btnPos.y + 16).attr('width', 22).attr('height', 22)
+            
+            group.append('g').attr('transform', `translate(${btnPos.x - 11}, ${btnPos.y + 16})`)
+                .append('foreignObject').attr('width', 22).attr('height', 22)
                 .append('xhtml:div').attr('class', 'node-action-button delete').html('×')
                 .on('click', (e, d) => { e.stopPropagation(); showConfirm(() => deleteNode(d.id), `Delete "${d.name}"?`); });
+            
             const editIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>`;
-            group.append('foreignObject').attr('x', -btnPos.x - 11).attr('y', btnPos.y - 38).attr('width', 22).attr('height', 22)
+            
+            group.append('g').attr('transform', `translate(${-btnPos.x - 11}, ${btnPos.y - 38})`)
+                .append('foreignObject').attr('width', 22).attr('height', 22)
                 .append('xhtml:div').attr('class', 'node-action-button edit').html(editIcon).on('click', (e, d) => { e.stopPropagation(); openNodeModal(d); });
+            
             if (d.content) {
                 const downloadIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
-                group.append('foreignObject').attr('x', -btnPos.x - 11).attr('y', btnPos.y + 16).attr('width', 22).attr('height', 22)
+                group.append('g').attr('transform', `translate(${-btnPos.x - 11}, ${btnPos.y + 16})`)
+                    .append('foreignObject').attr('width', 22).attr('height', 22)
                     .append('xhtml:div').attr('class', 'node-action-button download').html(downloadIcon).on('click', (e, d) => { e.stopPropagation(); downloadMarkdown(d.content, d.name); });
             }
             if(hasContent) {
                 const eyeIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
-                group.append('foreignObject').attr('x', -16).attr('y', isRect ? -nodeHeight/2 + 16 : 0).attr('width', 32).attr('height', 32)
+                group.append('g').attr('transform', `translate(-16, ${isRect ? -nodeHeight/2 + 16 : 0})`)
+                    .style('pointer-events', 'none') // Allow hover events to pass through the container
+                    .append('foreignObject').attr('width', 32).attr('height', 32)
                     .append('xhtml:div').attr('class', 'node-preview-button').html(eyeIcon)
                     .on('click', (e, d) => { e.stopPropagation(); openMarkdownReaderModal(d); });
             }
@@ -1604,16 +1634,22 @@
             `;
 
             const modal = showModal('welcome-modal', `
-                <div class="bg-ui rounded-xl shadow-xl p-10 sm:p-12 w-full max-w-2xl border border-border modal-enter flex flex-col">
-                    <h2 class="font-bold text-2xl mb-4" style="font-family: var(--font-ui);">Welcome to Synapse!</h2>
-                    <p class="text-secondary mb-6">Here are a few tips to get you started with your networked notebook:</p>
-                    <ul class="space-y-4 text-secondary text-base mb-8">${instructions}</ul>
-                    <div class="mt-auto flex justify-between items-center">
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="hide-welcome-checkbox" class="h-4 w-4 rounded border-border text-accent focus:ring-accent">
-                            <label for="hide-welcome-checkbox" class="text-sm text-secondary">Don't show this again</label>
+                <div class="bg-ui rounded-xl shadow-xl w-full max-w-2xl border border-border modal-enter flex flex-col max-h-[90vh]">
+                    <div class="p-6 sm:p-8 pb-4 flex-shrink-0">
+                         <h2 class="font-bold text-2xl mb-4" style="font-family: var(--font-ui);">Welcome to Synapse!</h2>
+                         <p class="text-secondary">Here are a few tips to get you started with your networked notebook:</p>
+                    </div>
+                    <div class="px-6 sm:px-8 overflow-y-auto flex-grow pb-6">
+                        <ul class="space-y-4 text-secondary text-base">${instructions}</ul>
+                    </div>
+                    <div class="p-6 sm:p-8 pt-5 border-t border-border flex-shrink-0">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" id="hide-welcome-checkbox" class="h-4 w-4 rounded border-border text-accent focus:ring-accent">
+                                <label for="hide-welcome-checkbox" class="text-sm text-secondary">Don't show this again</label>
+                            </div>
+                            <button id="welcome-close-btn" class="ui-button-accent px-5 py-2.5 font-semibold rounded-lg">Get Started</button>
                         </div>
-                        <button id="welcome-close-btn" class="ui-button-accent px-5 py-2.5 font-semibold rounded-lg">Get Started</button>
                     </div>
                 </div>
             `);
