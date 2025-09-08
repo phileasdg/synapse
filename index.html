@@ -781,37 +781,40 @@
 
             const btnPos = { x: isRect ? nodeWidth/2 + 8 : 35, y: isRect ? 0 : 0 };
             
-            // SAFARI/MOBILE FIX: Remove G wrapper and apply x/y directly to foreignObject.
-            group.append('foreignObject')
-                .attr('x', btnPos.x - 11).attr('y', btnPos.y - 38)
-                .attr('width', 22).attr('height', 22)
+            // SAFARI/MOBILE FIX: Re-implementing G wrapper with transform.
+            group.append('g').attr('transform', `translate(${btnPos.x - 11}, ${btnPos.y - 38})`)
+                .append('foreignObject').attr('width', 22).attr('height', 22)
                 .append('xhtml:div').attr('class', 'node-action-button add').html('＋').on('click', (e, d) => { e.stopPropagation(); addLinkedNode(d); });
             
-            group.append('foreignObject')
-                .attr('x', btnPos.x - 11).attr('y', btnPos.y + 16)
-                .attr('width', 22).attr('height', 22)
+            group.append('g').attr('transform', `translate(${btnPos.x - 11}, ${btnPos.y + 16})`)
+                .append('foreignObject').attr('width', 22).attr('height', 22)
                 .append('xhtml:div').attr('class', 'node-action-button delete').html('×')
                 .on('click', (e, d) => { e.stopPropagation(); showConfirm(() => deleteNode(d.id), `Delete "${d.name}"?`); });
             
             const editIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>`;
             
-            group.append('foreignObject')
-                .attr('x', -btnPos.x - 11).attr('y', btnPos.y - 38)
-                .attr('width', 22).attr('height', 22)
+            group.append('g').attr('transform', `translate(${-btnPos.x - 11}, ${btnPos.y - 38})`)
+                .append('foreignObject').attr('width', 22).attr('height', 22)
                 .append('xhtml:div').attr('class', 'node-action-button edit').html(editIcon).on('click', (e, d) => { e.stopPropagation(); openNodeModal(d); });
             
             if (d.content) {
                 const downloadIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
-                group.append('foreignObject')
-                    .attr('x', -btnPos.x - 11).attr('y', btnPos.y + 16)
-                    .attr('width', 22).attr('height', 22)
+                group.append('g').attr('transform', `translate(${-btnPos.x - 11}, ${btnPos.y + 16})`)
+                    .append('foreignObject').attr('width', 22).attr('height', 22)
                     .append('xhtml:div').attr('class', 'node-action-button download').html(downloadIcon).on('click', (e, d) => { e.stopPropagation(); downloadMarkdown(d.content, d.name); });
             }
             if(hasContent) {
                 const eyeIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
-                // Center the preview button on the node's origin (0,0)
+                
+                // FIX: Meaningful centering for the eye icon
+                let eyeY = -16; // Default to center
+                if (hasImage && hasTextContent) {
+                    // Position on the border between the 80px image and the text area
+                    eyeY = (-nodeHeight / 2) + 80 - 16;
+                }
+
                 group.append('foreignObject')
-                    .attr('x', -16).attr('y', -16)
+                    .attr('x', -16).attr('y', eyeY)
                     .attr('width', 32).attr('height', 32)
                     .style('pointer-events', 'none') 
                     .append('xhtml:div').attr('class', 'node-preview-button').html(eyeIcon)
@@ -1876,6 +1879,3 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js" xintegrity="sha512-S_2_LMwU2SjnoF8pNtH/K2DEsPBOsPq7vLqfU+eBfDdQvjTslmxlns9R/2L5g8/hL2QxV/T0J2WXzSAfU/g+2g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </body>
 </html>
-
-
-
