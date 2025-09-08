@@ -139,32 +139,83 @@
         .node-markdown-render p, .node-markdown-render ul, .node-markdown-render ol { margin: 0; padding: 0; }
         .node-markdown-render pre, .node-markdown-render code, .node-markdown-render blockquote, .node-markdown-render img { display: none; }
         .node-attachments-container { color: var(--text-secondary); }
-
-        .node-action-button { cursor: pointer; transition: all 0.2s ease-in-out; border-radius: 50%; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; user-select: none; border: 1px solid var(--border); background-color: var(--bg-ui); color: var(--text-secondary); box-shadow: 0 2px 4px -1px var(--shadow-color); opacity: 0; pointer-events: none; transform: scale(0.8); }
         
-        .node.hovered .node-action-button,
+        /* foreignObject BUTTONS FIX */
+        .node-action-button {
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            user-select: none;
+            border: 1px solid var(--border);
+            background-color: var(--bg-ui);
+            color: var(--text-secondary);
+            box-shadow: 0 2px 4px -1px var(--shadow-color);
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.8);
+        }
+        
         .node.selected .node-action-button,
+        .node.hovered .node-action-button,
         .node.pending-connection .node-action-button { 
-            opacity: 1; pointer-events: auto; transform: scale(1); 
+            opacity: 1; 
+            pointer-events: auto; 
+            transform: scale(1); 
         }
 
-        .node-action-button:hover { transform: scale(1.15); }
-        .node-action-button.add:hover, .node-action-button.edit:hover { background-color: var(--bg-accent); color: var(--text-accent); }
-        .node-action-button.delete:hover { background-color: #ef4444; color: white; }
-        .node-action-button.download:hover { background-color: #16a34a; color: white; }
+        .node-action-button:hover {
+            transform: scale(1.15) !important;
+        }
+
+        .node-action-button.add:hover,
+        .node-action-button.edit:hover {
+            background-color: var(--bg-accent);
+            color: var(--text-accent);
+        }
+        .node-action-button.delete:hover {
+            background-color: #ef4444;
+            color: white;
+        }
+        .node-action-button.download:hover {
+            background-color: #16a34a;
+            color: white;
+        }
         
         .node-preview-button {
-            cursor: pointer; transition: all 0.2s ease-in-out; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            width: 32px; height: 32px; user-select: none; border: 1px solid var(--border); background-color: var(--bg-ui);
-            color: var(--text-secondary); box-shadow: 0 4px 6px -1px var(--shadow-color);
-            opacity: 0; pointer-events: none; transform: scale(0.8); 
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            user-select: none;
+            border: 1px solid var(--border);
+            background-color: var(--bg-ui);
+            color: var(--text-secondary);
+            box-shadow: 0 4px 6px -1px var(--shadow-color);
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.8);
         }
 
-        .node.hovered .node-preview-button,
-        .node.selected .node-preview-button { 
-            opacity: 1; pointer-events: auto; transform: scale(1); 
+        .node.selected .node-preview-button,
+        .node.hovered .node-preview-button { 
+            opacity: 1;
+            pointer-events: auto;
+            transform: scale(1);
         }
-        .node-preview-button:hover { transform: scale(1.1); background-color: var(--bg-accent); color: var(--text-accent); }
+        .node-preview-button:hover {
+            transform: scale(1.1);
+            background-color: var(--bg-accent);
+            color: var(--text-accent);
+        }
 
 
         /* Markdown Preview & Image Carousel in Modals */
@@ -506,6 +557,8 @@
 
         const filter = defs.append("filter").attr("id", "node-shadow").attr("x", "-50%").attr("y", "-50%").attr("width", "200%").attr("height", "200%");
         filter.append("feDropShadow").attr("dx", 0).attr("dy", 2).attr("stdDeviation", 4).attr("flood-color", "var(--shadow-color)");
+        const filterLight = defs.append("filter").attr("id", "node-shadow-light").attr("x", "-50%").attr("y", "-50%").attr("width", "200%").attr("height", "200%");
+        filterLight.append("feDropShadow").attr("dx", 0).attr("dy", 1).attr("stdDeviation", 2).attr("flood-color", "var(--shadow-color)");
         
         const simulation = d3.forceSimulation(nodes)
             .force("link", d3.forceLink(links).id(d => d.id).distance(200))
@@ -604,9 +657,10 @@
             event.stopPropagation();
             hideEdgeEditPanel();
 
-            // Desktop linking logic (and second part of mobile linking)
             if (selectedNodeForEdge) {
+                // Currently in linking mode, a node has been clicked.
                 if (selectedNodeForEdge.id !== d.id) {
+                    // It's a different node, so create/remove a link.
                     const existingLinkIndex = links.findIndex(l => (l.type === 'manual' && ((l.source.id === selectedNodeForEdge.id && l.target.id === d.id) || (l.source.id === d.id && l.target.id === selectedNodeForEdge.id))));
                     if (existingLinkIndex > -1) {
                         links.splice(existingLinkIndex, 1);
@@ -614,38 +668,26 @@
                         links.push({ source: selectedNodeForEdge, target: d, direction: 'to', type: 'manual' });
                     }
                 }
+                // Exit linking mode regardless of what was clicked.
                 cancelEdgeSelection();
                 update();
                 if (['hierarchical'].includes(currentLayout)) applyCurrentLayout();
                 return;
             }
 
-            // Mobile-specific selection and linking logic
-            if (isTouchDevice) {
-                if (selectedNodeId && selectedNodeId !== d.id) {
-                    // A node is already selected, and we tapped a different one. Create a link.
-                    const sourceNode = nodes.find(n => n.id === selectedNodeId);
-                    const existingLinkIndex = links.findIndex(l => (l.type === 'manual' && ((l.source.id === sourceNode.id && l.target.id === d.id) || (l.source.id === d.id && l.target.id === sourceNode.id))));
-                    if (existingLinkIndex > -1) {
-                        links.splice(existingLinkIndex, 1);
-                    } else {
-                        links.push({ source: sourceNode, target: d, direction: 'to', type: 'manual' });
-                    }
-                    cancelEdgeSelection();
-                    update();
-                } else if (selectedNodeId === d.id) {
-                    // Tapped the same selected node again. Deselect it.
-                    cancelEdgeSelection();
-                } else {
-                    // No node selected, or tapped a different node without a prior selection. Select this node.
-                    node.classed('selected', false);
-                    thisNodeElement.classed('selected', true);
-                    selectedNodeId = d.id;
-                }
-            } else {
-                // Desktop: first click always enters linking mode
+            // Not in linking mode. Handle selection.
+            if (selectedNodeId === d.id) {
+                // This node was already selected. Start linking from it.
+                selectedNodeId = null; // Deselect
+                thisNodeElement.classed('selected', false);
                 selectedNodeForEdge = d;
                 updateConnectionStateIndicator();
+            } else {
+                // A different node was selected, or no node was selected.
+                // Deselect all others and select this one.
+                node.classed('selected', false);
+                thisNodeElement.classed('selected', true);
+                selectedNodeId = d.id;
             }
         }
         
@@ -778,46 +820,46 @@
                 const attachmentHTML = `<div class="node-attachments-container flex items-center gap-1.5 text-xs p-1 rounded-md">${ICONS.attachment} ${d.attachments.length}</div>`;
                 attachmentsFO.html(attachmentHTML);
             }
+            
+            // --- foreignObject Action Buttons (reliable across browsers) ---
+            const btnPos = { x: isRect ? nodeWidth / 2 + 14 : 42, y: 0 };
+            const foWidth = 22;
+            const foHeight = 22;
 
-            const btnPos = { x: isRect ? nodeWidth/2 + 8 : 35, y: isRect ? 0 : 0 };
+            const addIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
+            group.append('foreignObject').attr('width', foWidth).attr('height', foHeight)
+                .attr('transform', `translate(${btnPos.x - foWidth/2}, ${btnPos.y - 30 - foHeight/2})`)
+                .html(`<div class="node-action-button add">${addIcon}</div>`)
+                .on('click', (e, d) => { e.stopPropagation(); addLinkedNode(d); });
             
-            // SAFARI/MOBILE FIX: Re-implementing G wrapper with transform.
-            group.append('g').attr('transform', `translate(${btnPos.x - 11}, ${btnPos.y - 38})`)
-                .append('foreignObject').attr('width', 22).attr('height', 22)
-                .append('xhtml:div').attr('class', 'node-action-button add').html('＋').on('click', (e, d) => { e.stopPropagation(); addLinkedNode(d); });
-            
-            group.append('g').attr('transform', `translate(${btnPos.x - 11}, ${btnPos.y + 16})`)
-                .append('foreignObject').attr('width', 22).attr('height', 22)
-                .append('xhtml:div').attr('class', 'node-action-button delete').html('×')
+            const deleteIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+            group.append('foreignObject').attr('width', foWidth).attr('height', foHeight)
+                .attr('transform', `translate(${btnPos.x - foWidth/2}, ${btnPos.y + 30 - foHeight/2})`)
+                .html(`<div class="node-action-button delete">${deleteIcon}</div>`)
                 .on('click', (e, d) => { e.stopPropagation(); showConfirm(() => deleteNode(d.id), `Delete "${d.name}"?`); });
-            
+
             const editIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>`;
-            
-            group.append('g').attr('transform', `translate(${-btnPos.x - 11}, ${btnPos.y - 38})`)
-                .append('foreignObject').attr('width', 22).attr('height', 22)
-                .append('xhtml:div').attr('class', 'node-action-button edit').html(editIcon).on('click', (e, d) => { e.stopPropagation(); openNodeModal(d); });
+            group.append('foreignObject').attr('width', foWidth).attr('height', foHeight)
+                .attr('transform', `translate(${-btnPos.x - foWidth/2}, ${btnPos.y - 30 - foHeight/2})`)
+                .html(`<div class="node-action-button edit">${editIcon}</div>`)
+                .on('click', (e, d) => { e.stopPropagation(); openNodeModal(d); });
             
             if (d.content) {
                 const downloadIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`;
-                group.append('g').attr('transform', `translate(${-btnPos.x - 11}, ${btnPos.y + 16})`)
-                    .append('foreignObject').attr('width', 22).attr('height', 22)
-                    .append('xhtml:div').attr('class', 'node-action-button download').html(downloadIcon).on('click', (e, d) => { e.stopPropagation(); downloadMarkdown(d.content, d.name); });
+                group.append('foreignObject').attr('width', foWidth).attr('height', foHeight)
+                    .attr('transform', `translate(${-btnPos.x - foWidth/2}, ${btnPos.y + 30 - foHeight/2})`)
+                    .html(`<div class="node-action-button download">${downloadIcon}</div>`)
+                    .on('click', (e, d) => { e.stopPropagation(); downloadMarkdown(d.content, d.name); });
             }
             if(hasContent) {
-                const eyeIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
-                
-                // FIX: Meaningful centering for the eye icon
-                let eyeY = -16; // Default to center
+                let eyeY = 0;
                 if (hasImage && hasTextContent) {
-                    // Position on the border between the 80px image and the text area
-                    eyeY = (-nodeHeight / 2) + 80 - 16;
+                    eyeY = (-nodeHeight / 2) + 80;
                 }
-
-                group.append('foreignObject')
-                    .attr('x', -16).attr('y', eyeY)
-                    .attr('width', 32).attr('height', 32)
-                    .style('pointer-events', 'none') 
-                    .append('xhtml:div').attr('class', 'node-preview-button').html(eyeIcon)
+                const eyeIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+                group.append('foreignObject').attr('width', 32).attr('height', 32)
+                    .attr('transform', `translate(-16, ${eyeY - 16})`)
+                    .html(`<div class="node-preview-button">${eyeIcon}</div>`)
                     .on('click', (e, d) => { e.stopPropagation(); openMarkdownReaderModal(d); });
             }
         }
@@ -1674,7 +1716,7 @@
                         <p>If you find this tool useful, consider supporting its development or checking out more work below.</p>
                         <div class="flex flex-col sm:flex-row gap-4 mt-8">
                             <a href="https://phileasdg.github.io/" target="_blank" rel="noopener noreferrer" class="ui-button w-full text-center py-2.5 rounded-lg no-underline font-semibold">Personal Blog</a>
-                            <a href="https://www.paypal.com/donate/?business=K74DYULZ2RHZ2J&no_recurring=0&item_name=Buy+me+a+coffee+%3AD&currency_code=USD" target="_blank" rel="noopener noreferrer" class="ui-button-accent w-full text-center py-2.5 rounded-lg no-underline font-semibold">Buy me a coffee</a>
+                            <a href="https://www.paypal.com/donate/?business=K74DYULZRHZ2J&no_recurring=0&item_name=Buy+me+a+coffee+%3AD&currency_code=USD" target="_blank" rel="noopener noreferrer" class="ui-button-accent w-full text-center py-2.5 rounded-lg no-underline font-semibold">Buy me a coffee</a>
                         </div>
                     </div>
                     <div class="mt-10 pt-6 border-t border-border flex justify-between items-center flex-shrink-0">
