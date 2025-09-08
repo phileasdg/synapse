@@ -229,6 +229,45 @@
         #action-helper-bar {
             background-color: var(--bg-input);
         }
+
+        /* Responsive Layout Panel */
+        #layout-panel {
+            /* Mobile-first: bottom sheet styles */
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            transform: translateY(100%);
+            transition: transform 0.3s ease-in-out;
+            z-index: 40;
+            border-top-left-radius: 0.75rem;
+            border-top-right-radius: 0.75rem;
+        }
+        #layout-panel.open {
+            transform: translateY(0);
+        }
+        
+        /* Desktop: floating panel styles */
+        @media (min-width: 768px) {
+            #layout-panel {
+                position: absolute;
+                top: 5rem; /* ~80px */
+                left: 1rem;
+                right: auto;
+                bottom: auto;
+                width: 16rem; /* 256px */
+                border-radius: 0.75rem;
+                transform: scale(0.95) translateY(-10px);
+                opacity: 0;
+                pointer-events: none;
+                transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+            }
+            #layout-panel.open {
+                transform: scale(1) translateY(0);
+                opacity: 1;
+                pointer-events: auto;
+            }
+        }
     </style>
 </head>
 <body class="theme-warm h-screen w-screen overflow-hidden flex flex-col">
@@ -275,33 +314,30 @@
         </div>
     </header>
 
-    <!-- MOBILE FIX: Layout panel is now a bottom sheet for mobile -->
-    <div id="layout-panel-container" class="fixed inset-0 z-40 hidden pointer-events-none">
-         <div id="layout-panel-backdrop" class="absolute inset-0 bg-black/20"></div>
-         <div id="layout-panel" class="absolute bottom-0 left-0 right-0 bg-ui p-4 rounded-t-xl shadow-2xl border-t border-border transform translate-y-full transition-transform duration-300 pointer-events-auto">
-             <div class="w-full max-w-md mx-auto">
-                 <div class="w-12 h-1.5 bg-border rounded-full mx-auto mb-4"></div>
-                 <div class="space-y-4">
-                     <div>
-                         <h3 class="text-sm font-semibold text-secondary mb-2">Layout</h3>
-                         <div class="grid grid-cols-2 gap-2">
-                             <button id="layout-force" class="ui-button px-3 py-2 text-sm rounded-md w-full">Force</button>
-                             <button id="layout-hierarchical" class="ui-button px-3 py-2 text-sm rounded-md w-full">Tree</button>
-                             <button id="layout-circular" class="ui-button px-3 py-2 text-sm rounded-md w-full">Circular</button>
-                             <button id="layout-grid" class="ui-button px-3 py-2 text-sm rounded-md w-full">Grid</button>
-                         </div>
-                         <p id="tree-layout-helper" class="text-xs text-secondary mt-2"></p>
+    <!-- MOBILE FIX: Layout panel is now a bottom sheet for mobile, but a floating panel for desktop -->
+    <div id="layout-panel" class="bg-ui p-4 shadow-2xl border-border z-40">
+        <div class="w-full max-w-md mx-auto">
+             <div class="w-12 h-1.5 bg-border rounded-full mx-auto mb-4 md:hidden"></div>
+             <div class="space-y-4">
+                 <div>
+                     <h3 class="text-sm font-semibold text-secondary mb-2">Layout</h3>
+                     <div class="grid grid-cols-2 gap-2">
+                         <button id="layout-force" class="ui-button px-3 py-2 text-sm rounded-md w-full">Force</button>
+                         <button id="layout-hierarchical" class="ui-button px-3 py-2 text-sm rounded-md w-full">Tree</button>
+                         <button id="layout-circular" class="ui-button px-3 py-2 text-sm rounded-md w-full">Circular</button>
+                         <button id="layout-grid" class="ui-button px-3 py-2 text-sm rounded-md w-full">Grid</button>
                      </div>
-                     <hr class="border-border">
-                     <div>
-                          <h3 class="text-sm font-semibold text-secondary mb-2">Visible Links</h3>
-                          <div class="flex items-center gap-2">
-                               <button id="toggle-manual-links" title="Toggle Manual Links" class="ui-button px-3 py-2 text-sm rounded-md w-full active">Manual</button>
-                               <button id="toggle-markdown-links" title="Toggle Text Links" class="ui-button px-3 py-2 text-sm rounded-md w-full active">Text</button>
-                          </div>
-                     </div>
+                     <p id="tree-layout-helper" class="text-xs text-secondary mt-2"></p>
                  </div>
-            </div>
+                 <hr class="border-border">
+                 <div>
+                      <h3 class="text-sm font-semibold text-secondary mb-2">Visible Links</h3>
+                      <div class="flex items-center gap-2">
+                           <button id="toggle-manual-links" title="Toggle Manual Links" class="ui-button px-3 py-2 text-sm rounded-md w-full active">Manual</button>
+                           <button id="toggle-markdown-links" title="Toggle Text Links" class="ui-button px-3 py-2 text-sm rounded-md w-full active">Text</button>
+                      </div>
+                 </div>
+             </div>
         </div>
     </div>
     
@@ -556,7 +592,8 @@
             saveToLocal();
             handleSearch();
         }
-
+        
+        // FIX: Reworked click logic for mobile selection and desktop linking
         function handleNodeClick(event, d) {
             const thisNodeElement = d3.select(event.currentTarget);
             if (thisNodeElement.property('__longpress__')) {
@@ -567,6 +604,7 @@
             event.stopPropagation();
             hideEdgeEditPanel();
 
+            // Desktop linking logic (and second part of mobile linking)
             if (selectedNodeForEdge) {
                 if (selectedNodeForEdge.id !== d.id) {
                     const existingLinkIndex = links.findIndex(l => (l.type === 'manual' && ((l.source.id === selectedNodeForEdge.id && l.target.id === d.id) || (l.source.id === d.id && l.target.id === selectedNodeForEdge.id))));
@@ -582,18 +620,30 @@
                 return;
             }
 
+            // Mobile-specific selection and linking logic
             if (isTouchDevice) {
-                if (selectedNodeId === d.id) {
-                    selectedNodeId = null; 
-                    node.classed('selected', false);
-                    selectedNodeForEdge = d;
-                    updateConnectionStateIndicator();
+                if (selectedNodeId && selectedNodeId !== d.id) {
+                    // A node is already selected, and we tapped a different one. Create a link.
+                    const sourceNode = nodes.find(n => n.id === selectedNodeId);
+                    const existingLinkIndex = links.findIndex(l => (l.type === 'manual' && ((l.source.id === sourceNode.id && l.target.id === d.id) || (l.source.id === d.id && l.target.id === sourceNode.id))));
+                    if (existingLinkIndex > -1) {
+                        links.splice(existingLinkIndex, 1);
+                    } else {
+                        links.push({ source: sourceNode, target: d, direction: 'to', type: 'manual' });
+                    }
+                    cancelEdgeSelection();
+                    update();
+                } else if (selectedNodeId === d.id) {
+                    // Tapped the same selected node again. Deselect it.
+                    cancelEdgeSelection();
                 } else {
+                    // No node selected, or tapped a different node without a prior selection. Select this node.
                     node.classed('selected', false);
                     thisNodeElement.classed('selected', true);
                     selectedNodeId = d.id;
                 }
             } else {
+                // Desktop: first click always enters linking mode
                 selectedNodeForEdge = d;
                 updateConnectionStateIndicator();
             }
@@ -759,8 +809,9 @@
             }
             if(hasContent) {
                 const eyeIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+                const previewBtnY = isRect ? (-nodeHeight / 2) + 16 : 0;
                 group.append('g')
-                    .attr('transform', `translate(-16, -16)`) // Center the button
+                    .attr('transform', `translate(-16, ${previewBtnY - 16})`)
                     .style('pointer-events', 'none') 
                     .append('foreignObject').attr('width', 32).attr('height', 32)
                     .append('xhtml:div').attr('class', 'node-preview-button').html(eyeIcon)
@@ -1077,24 +1128,47 @@
         document.getElementById('about-toggle').addEventListener('click', () => openAboutModal());
 
         // MOBILE FIX: Layout panel open/close logic
-        const layoutPanelContainer = document.getElementById('layout-panel-container');
         const layoutPanel = document.getElementById('layout-panel');
-        const layoutPanelBackdrop = document.getElementById('layout-panel-backdrop');
-        document.getElementById('layout-panel-toggle').addEventListener('click', () => {
-             layoutPanelContainer.classList.remove('hidden');
-             setTimeout(() => {
-                 layoutPanel.style.transform = 'translateY(0)';
-                 layoutPanelBackdrop.style.opacity = '1';
-             }, 10);
-        });
-        function closeLayoutPanel() {
-            layoutPanel.style.transform = 'translateY(100%)';
-            layoutPanelBackdrop.style.opacity = '0';
-            setTimeout(() => {
-                layoutPanelContainer.classList.add('hidden');
-            }, 300);
+        let layoutPanelBackdrop = null;
+
+        const handleAwayClick = (event) => {
+            if (!layoutPanel.contains(event.target) && !document.getElementById('layout-panel-toggle').contains(event.target)) {
+                closeLayoutPanel();
+            }
+        };
+
+        function openLayoutPanel() {
+            layoutPanel.classList.add('open');
+            if (isTouchDevice) {
+                layoutPanelBackdrop = document.createElement('div');
+                layoutPanelBackdrop.className = 'fixed inset-0 bg-black/20 z-30';
+                document.body.appendChild(layoutPanelBackdrop);
+                layoutPanelBackdrop.addEventListener('click', closeLayoutPanel);
+            } else {
+                // Use setTimeout to avoid the listener firing on the same click that opened it
+                setTimeout(() => {
+                    document.addEventListener('mousedown', handleAwayClick);
+                }, 0);
+            }
         }
-        layoutPanelBackdrop.addEventListener('click', closeLayoutPanel);
+
+        function closeLayoutPanel() {
+            layoutPanel.classList.remove('open');
+            if (layoutPanelBackdrop) {
+                layoutPanelBackdrop.remove();
+                layoutPanelBackdrop = null;
+            }
+            document.removeEventListener('mousedown', handleAwayClick);
+        }
+        
+        document.getElementById('layout-panel-toggle').addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (layoutPanel.classList.contains('open')) {
+                closeLayoutPanel();
+            } else {
+                openLayoutPanel();
+            }
+        });
 
 
         window.onload = () => {
@@ -1802,4 +1876,3 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js" xintegrity="sha512-S_2_LMwU2SjnoF8pNtH/K2DEsPBOsPq7vLqfU+eBfDdQvjTslmxlns9R/2L5g8/hL2QxV/T0J2WXzSAfU/g+2g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </body>
 </html>
-
