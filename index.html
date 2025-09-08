@@ -116,7 +116,7 @@
 
         /* SVG, Nodes, Links */
         .node-shape { stroke-width: 1px; stroke: var(--border); fill: var(--bg-ui); transition: all 0.2s ease-in-out; }
-        .node:hover .node-shape, .node.selected .node-shape { stroke: var(--border-focus); stroke-width: 1.5px; }
+        .node.hovered .node-shape, .node.selected .node-shape { stroke: var(--border-focus); stroke-width: 1.5px; }
         .node.pending-connection .node-shape { animation: pulse-glow 2s infinite ease-in-out; stroke: var(--border-focus) !important; stroke-width: 1.5px; }
         .node-shape.searched-match { stroke: var(--border-focus) !important; stroke-width: 2.5px; }
         .node-shape-root { stroke: #22c55e !important; stroke-width: 2.5px; }
@@ -142,8 +142,6 @@
 
         .node-action-button { cursor: pointer; transition: all 0.2s ease-in-out; border-radius: 50%; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; user-select: none; border: 1px solid var(--border); background-color: var(--bg-ui); color: var(--text-secondary); box-shadow: 0 2px 4px -1px var(--shadow-color); opacity: 0; pointer-events: none; transform: scale(0.8); }
         
-        /* FIX: Show action buttons on hover (desktop) OR when selected (touch). Added .hovered for Safari. */
-        .node:hover .node-action-button, 
         .node.hovered .node-action-button,
         .node.selected .node-action-button,
         .node.pending-connection .node-action-button { 
@@ -162,8 +160,6 @@
             opacity: 0; pointer-events: none; transform: scale(0.8); 
         }
 
-        /* FIX: Show preview button on hover (desktop) OR when selected (touch). Added .hovered for Safari. */
-        .node:hover .node-preview-button,
         .node.hovered .node-preview-button,
         .node.selected .node-preview-button { 
             opacity: 1; pointer-events: auto; transform: scale(1); 
@@ -230,7 +226,6 @@
             background-color: var(--bg-ui);
         }
         
-        /* FIX: Set action helper background to match input fields */
         #action-helper-bar {
             background-color: var(--bg-input);
         }
@@ -239,8 +234,9 @@
 <body class="theme-warm h-screen w-screen overflow-hidden flex flex-col">
 
     <!-- Header and Controls -->
+    <!-- FIX: Made header responsive to stack on small screens -->
     <header class="p-3 bg-header border-b border-border shadow-sm z-30 transition-colors">
-        <div class="container mx-auto flex flex-wrap justify-between items-center gap-y-2 gap-x-4">
+        <div class="container mx-auto flex flex-wrap justify-between items-center gap-y-3 gap-x-4">
             <!-- Left: Notework Management -->
             <div class="flex items-center gap-3">
                 <h1 class="text-xl font-bold tracking-tight" style="font-family: var(--font-ui);">Synapse</h1>
@@ -279,26 +275,31 @@
         </div>
     </header>
 
-    <!-- Layout Options Panel (Initially Hidden, layout adjusted) -->
-    <div id="layout-panel" class="hidden absolute top-20 left-4 bg-ui p-4 rounded-xl shadow-2xl border border-border z-40 max-w-xs w-64 modal-enter">
-        <div class="space-y-4">
-            <div>
-                <h3 class="text-sm font-semibold text-secondary mb-2">Layout</h3>
-                <div class="grid grid-cols-2 gap-2">
-                    <button id="layout-force" class="ui-button px-3 py-2 text-sm rounded-md w-full">Force</button>
-                    <button id="layout-hierarchical" class="ui-button px-3 py-2 text-sm rounded-md w-full">Tree</button>
-                    <button id="layout-circular" class="ui-button px-3 py-2 text-sm rounded-md w-full">Circular</button>
-                    <button id="layout-grid" class="ui-button px-3 py-2 text-sm rounded-md w-full">Grid</button>
-                </div>
-                <!-- FIX: Added ID for dynamic text update -->
-                <p id="tree-layout-helper" class="text-xs text-secondary mt-2">For Tree layout, right-click a node to set it as root.</p>
-            </div>
-            <hr class="border-border">
-            <div>
-                 <h3 class="text-sm font-semibold text-secondary mb-2">Visible Links</h3>
-                 <div class="flex items-center gap-2">
-                      <button id="toggle-manual-links" title="Toggle Manual Links" class="ui-button px-3 py-2 text-sm rounded-md w-full active">Manual</button>
-                      <button id="toggle-markdown-links" title="Toggle Text Links" class="ui-button px-3 py-2 text-sm rounded-md w-full active">Text</button>
+    <!-- MOBILE FIX: Layout panel is now a bottom sheet for mobile -->
+    <div id="layout-panel-container" class="fixed inset-0 z-40 hidden pointer-events-none">
+         <div id="layout-panel-backdrop" class="absolute inset-0 bg-black/20"></div>
+         <div id="layout-panel" class="absolute bottom-0 left-0 right-0 bg-ui p-4 rounded-t-xl shadow-2xl border-t border-border transform translate-y-full transition-transform duration-300 pointer-events-auto">
+             <div class="w-full max-w-md mx-auto">
+                 <div class="w-12 h-1.5 bg-border rounded-full mx-auto mb-4"></div>
+                 <div class="space-y-4">
+                     <div>
+                         <h3 class="text-sm font-semibold text-secondary mb-2">Layout</h3>
+                         <div class="grid grid-cols-2 gap-2">
+                             <button id="layout-force" class="ui-button px-3 py-2 text-sm rounded-md w-full">Force</button>
+                             <button id="layout-hierarchical" class="ui-button px-3 py-2 text-sm rounded-md w-full">Tree</button>
+                             <button id="layout-circular" class="ui-button px-3 py-2 text-sm rounded-md w-full">Circular</button>
+                             <button id="layout-grid" class="ui-button px-3 py-2 text-sm rounded-md w-full">Grid</button>
+                         </div>
+                         <p id="tree-layout-helper" class="text-xs text-secondary mt-2"></p>
+                     </div>
+                     <hr class="border-border">
+                     <div>
+                          <h3 class="text-sm font-semibold text-secondary mb-2">Visible Links</h3>
+                          <div class="flex items-center gap-2">
+                               <button id="toggle-manual-links" title="Toggle Manual Links" class="ui-button px-3 py-2 text-sm rounded-md w-full active">Manual</button>
+                               <button id="toggle-markdown-links" title="Toggle Text Links" class="ui-button px-3 py-2 text-sm rounded-md w-full active">Text</button>
+                          </div>
+                     </div>
                  </div>
             </div>
         </div>
@@ -343,7 +344,7 @@
         let links = [];
         let nodeIdCounter = 0;
         let selectedNodeForEdge = null;
-        let selectedNodeId = null; // FIX: For tracking tapped node on mobile
+        let selectedNodeId = null; 
         let selectedLink = null;
         let currentLayout = 'force';
         let currentRootId = null;
@@ -514,7 +515,6 @@
                 .call(drag(simulation))
                 .on("click", handleNodeClick)
                 .on("contextmenu", handleNodeRightClick)
-                // FIX: Add JS-driven hover for better Safari compatibility
                 .on('mouseenter', function() {
                     if (!isTouchDevice) {
                         d3.select(this).classed('hovered', true);
@@ -526,14 +526,12 @@
                     }
                 });
 
-            // FIX: Add long-press event for touch devices
             if (isTouchDevice) {
                 let touchTimer;
                 nodeEnter.on('touchstart', function(event, d) {
                     touchTimer = setTimeout(() => {
                         handleNodeRightClick(event, d);
                         if ('vibrate' in navigator) navigator.vibrate(50);
-                        // Flag to prevent click event from firing after a long press
                         d3.select(this).property('__longpress__', true);
                     }, 500);
                 }).on('touchend', function() {
@@ -559,21 +557,18 @@
             handleSearch();
         }
 
-        // FIX: Reworked click logic for mobile selection and desktop linking
         function handleNodeClick(event, d) {
             const thisNodeElement = d3.select(event.currentTarget);
             if (thisNodeElement.property('__longpress__')) {
                 thisNodeElement.property('__longpress__', false);
-                return; // It was a long press, not a click
+                return; 
             }
 
             event.stopPropagation();
             hideEdgeEditPanel();
 
-            // Case 1: We are already trying to connect a node.
             if (selectedNodeForEdge) {
                 if (selectedNodeForEdge.id !== d.id) {
-                    // Connect/disconnect logic
                     const existingLinkIndex = links.findIndex(l => (l.type === 'manual' && ((l.source.id === selectedNodeForEdge.id && l.target.id === d.id) || (l.source.id === d.id && l.target.id === selectedNodeForEdge.id))));
                     if (existingLinkIndex > -1) {
                         links.splice(existingLinkIndex, 1);
@@ -581,29 +576,24 @@
                         links.push({ source: selectedNodeForEdge, target: d, direction: 'to', type: 'manual' });
                     }
                 }
-                // Exit link mode regardless
                 cancelEdgeSelection();
                 update();
                 if (['hierarchical'].includes(currentLayout)) applyCurrentLayout();
                 return;
             }
 
-            // Case 2: We are NOT in link mode.
             if (isTouchDevice) {
                 if (selectedNodeId === d.id) {
-                    // On touch, a second tap on the selected node initiates linking
-                    selectedNodeId = null; // deselect visually
+                    selectedNodeId = null; 
                     node.classed('selected', false);
                     selectedNodeForEdge = d;
                     updateConnectionStateIndicator();
                 } else {
-                    // On touch, a first tap or tap on a different node just selects it.
                     node.classed('selected', false);
                     thisNodeElement.classed('selected', true);
                     selectedNodeId = d.id;
                 }
             } else {
-                // On desktop, any first click initiates linking (original behavior).
                 selectedNodeForEdge = d;
                 updateConnectionStateIndicator();
             }
@@ -624,11 +614,9 @@
 
             const isMarkdown = d.type === 'markdown';
             if (isMarkdown) {
-                // For text links, just highlight them but don't show an edit panel
                 link.filter(ld => ld === selectedLink).classed('selected', false);
                 link.filter(ld => ld === d).classed('selected', true);
                 selectedLink = d;
-                // Auto-deselect after a moment
                 setTimeout(() => {
                     link.filter(ld => ld === d).classed('selected', false);
                     if(selectedLink === d) selectedLink = null;
@@ -743,7 +731,6 @@
 
             const btnPos = { x: isRect ? nodeWidth/2 + 8 : 35, y: isRect ? 0 : 0 };
             
-            // FIX: Use x/y attributes on foreignObject directly instead of a group transform to fix Safari positioning bug.
             group.append('foreignObject').attr('x', btnPos.x - 11).attr('y', btnPos.y - 38).attr('width', 22).attr('height', 22)
                 .append('xhtml:div').attr('class', 'node-action-button add').html('＋').on('click', (e, d) => { e.stopPropagation(); addLinkedNode(d); });
             
@@ -763,8 +750,8 @@
             }
             if(hasContent) {
                 const eyeIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
-                group.append('foreignObject').attr('x', -16).attr('y', isRect ? -nodeHeight/2 + 16 : 0).attr('width', 32).attr('height', 32)
-                    .style('pointer-events', 'none') // Allow hover events to pass through the container
+                group.append('foreignObject').attr('x', -16).attr('y', isRect ? -nodeHeight/2 - 16 : -48).attr('width', 32).attr('height', 32)
+                    .style('pointer-events', 'none') 
                     .append('xhtml:div').attr('class', 'node-preview-button').html(eyeIcon)
                     .on('click', (e, d) => { e.stopPropagation(); openMarkdownReaderModal(d); });
             }
@@ -1057,7 +1044,6 @@
             }); 
         });
         
-        // FIX: Reworked background click logic to handle deselection
         svg.on('click', (event) => {
             if (event.target.isEqualNode(svg.node())) {
                 hideEdgeEditPanel();
@@ -1078,7 +1064,26 @@
         });
 
         document.getElementById('about-toggle').addEventListener('click', () => openAboutModal());
-        document.getElementById('layout-panel-toggle').addEventListener('click', () => document.getElementById('layout-panel').classList.toggle('hidden'));
+
+        // MOBILE FIX: Layout panel open/close logic
+        const layoutPanelContainer = document.getElementById('layout-panel-container');
+        const layoutPanel = document.getElementById('layout-panel');
+        const layoutPanelBackdrop = document.getElementById('layout-panel-backdrop');
+        document.getElementById('layout-panel-toggle').addEventListener('click', () => {
+             layoutPanelContainer.classList.remove('hidden');
+             setTimeout(() => {
+                 layoutPanel.style.transform = 'translateY(0)';
+                 layoutPanelBackdrop.style.opacity = '1';
+             }, 10);
+        });
+        function closeLayoutPanel() {
+            layoutPanel.style.transform = 'translateY(100%)';
+            layoutPanelBackdrop.style.opacity = '0';
+            setTimeout(() => {
+                layoutPanelContainer.classList.add('hidden');
+            }, 300);
+        }
+        layoutPanelBackdrop.addEventListener('click', closeLayoutPanel);
 
 
         window.onload = () => {
@@ -1086,7 +1091,6 @@
             applyTheme(savedTheme);
             loadFromLocal();
             
-            // FIX: Update helper text based on device type
             document.getElementById('tree-layout-helper').textContent = isTouchDevice 
                 ? "For Tree layout, long-press a node to set it as root."
                 : "For Tree layout, right-click a node to set it as root.";
@@ -1142,13 +1146,11 @@
 
         function extractImageUrls(nodeData) {
             const urls = new Set();
-            // From attachments
             (nodeData.attachments || []).forEach(url => {
                 if (isImageUrl(url)) {
                     urls.add(url);
                 }
             });
-            // From markdown content
             if (nodeData.content) {
                 const markdownImageRegex = /!\[.*?\]\((.*?)\)/g;
                 let match;
@@ -1181,7 +1183,6 @@
             if (oldName.trim().toLowerCase() !== newName.trim().toLowerCase()) {
                 updateAllMarkdownLinks();
             } else {
-                // Just update links for the current node if name hasn't changed
                 links = links.filter(l => !(l.source.id === nodeId && l.type === 'markdown'));
                 const newMarkdownLinks = parseMarkdownLinks(node);
                 links.push(...newMarkdownLinks);
@@ -1201,7 +1202,6 @@
                     const currentReaderModal = document.getElementById('reader-modal');
                     const currentEditModal = document.getElementById('node-modal');
 
-                    // If we're clicking a link inside the reader for the same node, do nothing.
                     if (activeNodeReading && activeNodeReading.id === targetNode.id) {
                         return;
                     }
@@ -1215,7 +1215,6 @@
                         activeNodeEditing = null;
                     }
                     
-                    // A small delay to allow the old modal to fully close, preventing UI flashes
                     setTimeout(() => {
                         openMarkdownReaderModal(targetNode);
                     }, 50); 
@@ -1224,7 +1223,6 @@
                         const sourceNode = activeNodeReading || activeNodeEditing;
                         const currentEditModal = document.getElementById('node-modal');
 
-                        // If we were editing a node, save its contents first.
                         if (activeNodeEditing && currentEditModal) {
                             saveNodeFromModal(currentEditModal, activeNodeEditing.id);
                         }
@@ -1247,7 +1245,6 @@
                         };
                         nodes.push(newNode);
                         
-                        // We must call updateAllMarkdownLinks here so the original link now works
                         updateAllMarkdownLinks();
                         update();
                         
@@ -1258,15 +1255,17 @@
             });
         }
 
+        // MOBILE FIX: Major overhaul of Node Edit modal for responsive design
         function openNodeModal(nodeData) {
             activeNodeEditing = nodeData;
             const modal = showModal('node-modal', `
                 <div class="bg-ui rounded-xl shadow-xl w-[95vw] max-w-[1600px] h-[90vh] border border-border modal-enter flex flex-col">
                     <!-- Header -->
-                    <div class="flex-shrink-0 flex items-center justify-between gap-4 p-4 border-b border-border">
-                        <input type="text" id="node-name" class="text-2xl sm:text-3xl font-bold w-full bg-transparent focus:outline-none p-2 -mx-2 rounded-md transition-colors border border-transparent hover:border-border focus:border-border-focus focus:bg-ui-hover" style="font-family: var(--font-body);" placeholder="Node Title">
+                    <div class="flex-shrink-0 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 p-4 border-b border-border">
+                        <input type="text" id="node-name" class="text-2xl font-bold w-full bg-transparent focus:outline-none p-2 -mx-2 rounded-md transition-colors border border-transparent hover:border-border focus:border-border-focus focus:bg-ui-hover" style="font-family: var(--font-body);" placeholder="Node Title">
                         <nav class="flex space-x-2 flex-shrink-0" id="modal-tabs">
                              <button data-tab="content" class="ui-button px-3 py-1.5 text-sm rounded-md">Content</button>
+                             <button data-tab="preview" class="ui-button px-3 py-1.5 text-sm rounded-md md:hidden">Preview</button>
                              <button data-tab="attachments" class="ui-button px-3 py-1.5 text-sm rounded-md">Attachments</button>
                              <button data-tab="connections" class="ui-button px-3 py-1.5 text-sm rounded-md">Links</button>
                         </nav>
@@ -1274,53 +1273,60 @@
 
                     <!-- Body -->
                     <div class="flex-1 flex flex-col md:flex-row min-h-0">
-                        <!-- Left Panel (Editor) -->
+                        <!-- Left Panel (Editor Area) -->
                         <div class="w-full md:w-1/2 p-4 flex flex-col min-h-0">
-                            <div id="tab-content" class="h-full flex flex-col">
-                                <textarea id="node-content" class="ui-textarea block w-full h-full rounded-md text-lg leading-relaxed p-4" style="font-family: var(--font-body); resize: none;" placeholder="Type content here. Use [[Node Name]] to link nodes."></textarea>
-                            </div>
-                            <div id="tab-attachments" class="hidden h-full flex flex-col">
-                                <div class="flex-1 space-y-2 overflow-y-auto mb-3 pr-2" id="attachments-list"></div>
-                                <div class="flex gap-2">
-                                    <input type="text" id="attachment-input" placeholder="Paste a URL and press Enter..." class="ui-input flex-grow min-w-0 rounded-md text-base p-3">
-                                    <button id="add-attachment-btn" class="ui-button-accent px-4 font-semibold rounded-md">Add</button>
+                            <!-- This container holds the different tab panels -->
+                            <div class="h-full flex flex-col" id="modal-main-panel">
+                                <div id="tab-content" class="h-full flex flex-col">
+                                    <textarea id="node-content" class="ui-textarea block w-full h-full rounded-md text-lg leading-relaxed p-4" style="font-family: var(--font-body); resize: none;" placeholder="Type content here. Use [[Node Name]] to link nodes."></textarea>
                                 </div>
-                            </div>
-                            <div id="tab-connections" class="hidden h-full flex flex-col">
-                                <div class="flex-1 space-y-2 overflow-y-auto mb-2 pr-2" id="connections-list"></div>
-                                <div class="flex gap-2">
-                                    <select id="add-connection-select" class="ui-select flex-grow min-w-0 rounded-md text-base p-3"></select>
-                                    <button id="add-connection-btn" class="ui-button-accent px-4 font-semibold rounded-md">Connect</button>
+                                <div id="tab-preview" class="hidden h-full flex-col">
+                                    <div id="markdown-preview-mobile" class="preview-content flex-1 border border-border rounded-md p-4 overflow-y-auto" style="background-color: var(--bg-input);"></div>
+                                </div>
+                                <div id="tab-attachments" class="hidden h-full flex flex-col">
+                                    <div class="flex-1 space-y-2 overflow-y-auto mb-3 pr-2" id="attachments-list"></div>
+                                    <div class="flex gap-2">
+                                        <input type="text" id="attachment-input" placeholder="Paste a URL and press Enter..." class="ui-input flex-grow min-w-0 rounded-md text-base p-3">
+                                        <button id="add-attachment-btn" class="ui-button-accent px-4 font-semibold rounded-md">Add</button>
+                                    </div>
+                                </div>
+                                <div id="tab-connections" class="hidden h-full flex flex-col">
+                                    <div class="flex-1 space-y-2 overflow-y-auto mb-2 pr-2" id="connections-list"></div>
+                                    <div class="flex gap-2">
+                                        <select id="add-connection-select" class="ui-select flex-grow min-w-0 rounded-md text-base p-3"></select>
+                                        <button id="add-connection-btn" class="ui-button-accent px-4 font-semibold rounded-md">Connect</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Right Panel (Preview) -->
-                         <div class="w-full md:w-1/2 p-4 border-t md:border-t-0 md:border-l border-border flex flex-col min-h-0">
+                        <!-- Right Panel (Desktop Preview) -->
+                         <div class="w-full md:w-1/2 p-4 border-t md:border-t-0 md:border-l border-border hidden md:flex flex-col min-h-0">
                              <label class="block text-sm font-medium text-secondary mb-2 flex-shrink-0">Live Preview</label>
-                             <div id="markdown-preview" class="preview-content flex-1 border border-border rounded-md p-4 overflow-y-auto" style="background-color: var(--bg-input);"></div>
+                             <div id="markdown-preview-desktop" class="preview-content flex-1 border border-border rounded-md p-4 overflow-y-auto" style="background-color: var(--bg-input);"></div>
                          </div>
                     </div>
                     
                     <!-- Footer -->
-                    <div class="p-4 border-t border-border flex justify-between items-center flex-shrink-0">
-                        <div class="flex items-center gap-4">
-                            <button id="modal-delete-node" class="ui-button px-5 py-2.5 font-semibold rounded-lg hover:bg-red-500 hover:text-white hover:border-red-500">Delete</button>
-                            <button id="modal-read-view" class="ui-button px-5 py-2.5 font-semibold rounded-lg">Read View</button>
-                            <button id="modal-download-node" title="Download as Markdown" class="ui-button p-2.5 rounded-lg">
+                    <div class="p-4 border-t border-border flex flex-wrap justify-between items-center flex-shrink-0 gap-3">
+                        <div class="flex items-center gap-2">
+                            <button id="modal-delete-node" class="ui-button px-4 py-2 font-semibold rounded-lg hover:bg-red-500 hover:text-white hover:border-red-500">Delete</button>
+                            <button id="modal-read-view" class="ui-button px-4 py-2 font-semibold rounded-lg">Read View</button>
+                            <button id="modal-download-node" title="Download as Markdown" class="ui-button p-2 rounded-lg">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                             </button>
                         </div>
-                        <div class="flex space-x-4">
-                            <button id="modal-cancel" class="ui-button px-5 py-2.5 font-semibold rounded-lg">Cancel</button>
-                            <button id="modal-save" class="ui-button-accent px-5 py-2.5 font-semibold rounded-lg">Save</button>
+                        <div class="flex space-x-2">
+                            <button id="modal-cancel" class="ui-button px-4 py-2 font-semibold rounded-lg">Cancel</button>
+                            <button id="modal-save" class="ui-button-accent px-4 py-2 font-semibold rounded-lg">Save</button>
                         </div>
                     </div>
                 </div>`);
             
             const nodeNameInput = modal.querySelector('#node-name');
             const nodeContentTextarea = modal.querySelector('#node-content');
-            const markdownPreview = modal.querySelector('#markdown-preview');
+            const previewDesktop = modal.querySelector('#markdown-preview-desktop');
+            const previewMobile = modal.querySelector('#markdown-preview-mobile');
             const attachmentInput = modal.querySelector('#attachment-input');
             const attachmentsList = modal.querySelector('#attachments-list');
             const connectionsList = modal.querySelector('#connections-list');
@@ -1328,8 +1334,11 @@
             
             function updateLivePreview() { 
                 const content = nodeContentTextarea.value;
-                markdownPreview.innerHTML = mdConverter.makeHtml(content); 
-                Prism.highlightAllUnder(markdownPreview);
+                const htmlContent = mdConverter.makeHtml(content);
+                previewDesktop.innerHTML = htmlContent;
+                previewMobile.innerHTML = htmlContent;
+                Prism.highlightAllUnder(previewDesktop);
+                Prism.highlightAllUnder(previewMobile);
             }
 
             function addAttachmentToModalList(url) {
@@ -1358,16 +1367,11 @@
             function populateConnectionsList(nodeId) {
                 connectionsList.innerHTML = '';
                 
-                // Get manual links from the global state
                 const manualLinks = links.filter(l => l.type === 'manual' && (l.source.id === nodeId || l.target.id === nodeId));
-
-                // Parse markdown links directly from the current textarea content
                 const tempNodeForParsing = { ...nodeData, content: nodeContentTextarea.value };
                 const markdownLinks = parseMarkdownLinks(tempNodeForParsing);
 
                 const allConnectedLinks = [...manualLinks, ...markdownLinks];
-                
-                // Sort to group manual links first
                 allConnectedLinks.sort((a, b) => {
                     if (a.type === 'manual' && b.type !== 'manual') return -1;
                     if (a.type !== 'manual' && b.type === 'manual') return 1;
@@ -1375,7 +1379,7 @@
                 });
 
                 if (allConnectedLinks.length === 0) {
-                    connectionsList.innerHTML = `<span class="text-sm italic text-secondary">No links found. Add manual links below or text links via [[...]] syntax.</span>`;
+                    connectionsList.innerHTML = `<span class="text-sm italic text-secondary">No links found.</span>`;
                     return;
                 }
 
@@ -1441,17 +1445,11 @@
             populateAddConnectionSelect(nodeData.id);
             updateLivePreview();
             
-            addInternalLinkListeners(markdownPreview);
+            addInternalLinkListeners(previewDesktop);
+            addInternalLinkListeners(previewMobile);
 
-            modal.querySelector('#modal-read-view').onclick = () => {
-                closeModal(modal);
-                activeNodeEditing = null;
-                openMarkdownReaderModal(nodeData);
-            };
-            nodeContentTextarea.addEventListener('input', () => {
-                updateLivePreview();
-                populateConnectionsList(nodeData.id);
-            });
+            modal.querySelector('#modal-read-view').onclick = () => { closeModal(modal); activeNodeEditing = null; openMarkdownReaderModal(nodeData); };
+            nodeContentTextarea.addEventListener('input', () => { updateLivePreview(); populateConnectionsList(nodeData.id); });
             modal.querySelector('#add-attachment-btn').onclick = () => { if (attachmentInput.value) { try { new URL(attachmentInput.value); addAttachmentToModalList(attachmentInput.value); attachmentInput.value = ''; } catch(e) { console.error("Invalid URL"); } } };
             attachmentInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); modal.querySelector('#add-attachment-btn').click(); }});
             modal.querySelector('#add-connection-btn').onclick = () => { const targetNodeId = parseInt(addConnectionSelect.value); if (!targetNodeId || !activeNodeEditing) return; links.push({ source: activeNodeEditing, target: nodes.find(n=>n.id === targetNodeId), direction: 'to', type: 'manual' }); update(); populateConnectionsList(activeNodeEditing.id); populateAddConnectionSelect(activeNodeEditing.id); };
@@ -1459,16 +1457,12 @@
             modal.querySelector('#modal-delete-node').onclick = () => { showConfirm(() => { deleteNode(activeNodeEditing.id); closeModal(modal); activeNodeEditing = null; }, `Delete "${activeNodeEditing.name}"?`); };
             modal.querySelector('#modal-download-node').onclick = () => { downloadMarkdown(nodeContentTextarea.value, nodeNameInput.value); };
             modal.querySelector('#modal-save').onclick = () => {
-                if (activeNodeEditing) {
-                    saveNodeFromModal(modal, activeNodeEditing.id);
-                }
-                closeModal(modal);
-                activeNodeEditing = null;
-                update();
+                if (activeNodeEditing) { saveNodeFromModal(modal, activeNodeEditing.id); }
+                closeModal(modal); activeNodeEditing = null; update();
             };
             
             const tabsContainer = modal.querySelector('#modal-tabs');
-            const tabPanels = { content: modal.querySelector('#tab-content'), attachments: modal.querySelector('#tab-attachments'), connections: modal.querySelector('#tab-connections'), };
+            const tabPanels = { content: modal.querySelector('#tab-content'), preview: modal.querySelector('#tab-preview'), attachments: modal.querySelector('#tab-attachments'), connections: modal.querySelector('#tab-connections'), };
             tabsContainer.querySelectorAll('button').forEach(btn => {
                 btn.onclick = (e) => {
                     const tabName = e.target.dataset.tab;
@@ -1522,14 +1516,14 @@
 
             const modal = showModal('reader-modal', `
                 <div class="bg-ui rounded-xl shadow-xl w-[95vw] max-w-screen-2xl h-[90vh] border border-border modal-enter flex flex-col">
-                    <div class="px-4 sm:px-6 py-3 flex-shrink-0 flex justify-between items-center border-b border-border gap-4">
-                        <h2 class="text-2xl font-bold truncate pr-4 flex-shrink min-w-0" style="font-family: var(--font-body);">${nodeData.name}</h2>
-                        <nav id="reader-tabs" class="flex space-x-2">${tabsHTML}</nav>
+                    <div class="px-4 sm:px-6 py-3 flex-shrink-0 flex flex-wrap justify-between items-center border-b border-border gap-3">
+                        <h2 class="text-xl sm:text-2xl font-bold truncate pr-4 flex-shrink min-w-0" style="font-family: var(--font-body);">${nodeData.name}</h2>
+                        <nav id="reader-tabs" class="flex space-x-2 order-last w-full sm:w-auto sm:order-none">${tabsHTML}</nav>
                         <div class="flex items-center gap-2">
                             <button id="reader-download-btn" title="Download as Markdown" class="ui-button p-2 rounded-lg flex-shrink-0">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                             </button>
-                            <button id="reader-edit-btn" class="ui-button px-5 py-2.5 font-semibold rounded-lg">Edit</button>
+                            <button id="reader-edit-btn" class="ui-button px-4 py-2 font-semibold rounded-lg">Edit</button>
                         </div>
                     </div>
                     <div class="flex-1 min-h-0 relative" style="background-color: var(--bg-ui);">
@@ -1550,7 +1544,6 @@
             addInternalLinkListeners(previewContent);
             Prism.highlightAllUnder(previewContent);
             
-             // --- Tab Logic ---
             const tabsNav = modal.querySelector('#reader-tabs');
             const tabPanels = {
                 markdown: modal.querySelector('#reader-tab-markdown'),
@@ -1572,7 +1565,6 @@
                 if(tabPanels[tabName]) tabPanels[tabName].classList.remove('hidden');
             });
 
-            // --- Carousel Trigger Logic ---
             modal.querySelectorAll('.image-carousel-trigger').forEach(trigger => {
                 trigger.addEventListener('click', () => {
                     const index = parseInt(trigger.dataset.index, 10);
@@ -1587,7 +1579,7 @@
         
         function openAboutModal() {
             const modal = showModal('about-modal', `
-                <div class="bg-ui rounded-xl shadow-xl p-10 sm:p-12 w-full max-w-2xl border border-border modal-enter flex flex-col text-center">
+                <div class="bg-ui rounded-xl shadow-xl p-8 sm:p-12 w-full max-w-2xl border border-border modal-enter flex flex-col text-center">
                     <h2 class="text-3xl font-bold mb-4" style="font-family: var(--font-ui);">Synapse</h2>
                     <div class="preview-content text-base space-y-4">
                         <p>A networked notebook for visual thinking, created by Phileas Dazeley-Gaist as a passion project. It's designed to help thinkers, writers, and creators connect ideas in a fluid, graphical way.</p>
@@ -1610,7 +1602,6 @@
             };
         }
 
-        // FIX: Reworked to show mobile-specific instructions
         function showWelcomeTutorial() {
             const instructions = isTouchDevice
             ? `
@@ -1800,3 +1791,4 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js" xintegrity="sha512-S_2_LMwU2SjnoF8pNtH/K2DEsPBOsPq7vLqfU+eBfDdQvjTslmxlns9R/2L5g8/hL2QxV/T0J2WXzSAfU/g+2g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </body>
 </html>
+
